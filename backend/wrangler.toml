@@ -1,0 +1,40 @@
+name = "weather-backend"
+main = "src/index.ts"
+compatibility_date = "2024-08-30"
+compatibility_flags = ["nodejs_compat"]
+
+# Workers Analytics Engine
+[analytics_engine_datasets]
+
+# KV namespaces for weather data caching
+[[kv_namespaces]]
+binding = "WEATHER_CACHE"
+id = "weather_cache_production"
+preview_id = "weather_cache_preview"
+
+# Cron triggers for weather data collection
+[triggers]
+crons = [
+  # Brambles Bank - every 5 minutes (more frequent for comprehensive data)
+  "*/5 * * * *",
+  # Seaview - every 2 minutes (real-time wind data)  
+  "*/2 * * * *",
+  # Lymington - every 3 minutes (stable data source)
+  "*/3 * * * *"
+]
+
+# Environment variables
+[vars]
+ENVIRONMENT = "production"
+
+# Secrets (set via wrangler secret put)
+# API keys and sensitive data go here, not in this file
+
+# Development configuration
+[env.development]
+[[env.development.kv_namespaces]]
+binding = "WEATHER_CACHE"
+id = "weather_cache_development"
+
+[env.development.vars]
+ENVIRONMENT = "development"
