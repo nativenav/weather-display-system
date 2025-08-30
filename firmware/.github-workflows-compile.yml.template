@@ -1,0 +1,54 @@
+# Sample GitHub Actions workflow for Arduino CLI compilation
+# Move to .github/workflows/compile.yml when ready to use
+
+name: Arduino CLI Compile
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v2.0.0
+
+      - name: Install ESP32 board support
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32
+
+      - name: Install required libraries
+        run: |
+          arduino-cli lib install ArduinoJson
+          arduino-cli lib install ArduinoHttpClient
+          # Add other required libraries here
+
+      - name: Compile sketch
+        run: |
+          arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32C3 \
+            --output-dir ./build \
+            --verbose \
+            ./weather-client/
+
+      - name: Check memory usage
+        run: |
+          # Extract memory usage from compilation output
+          echo "Memory usage analysis:"
+          # Add memory usage parsing here
+
+      - name: Upload build artifacts
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-build
+          path: |
+            ./build/*.bin
+            ./build/*.elf

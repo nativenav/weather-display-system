@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+.npm/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# PlatformIO / Arduino
+.pio/
+.build/
+*.bin
+*.elf
+
+# Logs
+*.log
+
+# Env
+.env
+.env.*
+

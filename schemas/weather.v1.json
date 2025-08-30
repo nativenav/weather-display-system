@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Weather Schema v1",
+  "type": "object",
+  "required": ["schema", "stationId", "timestamp", "data", "ttl"],
+  "properties": {
+    "schema": { "type": "string", "const": "weather.v1" },
+    "stationId": { "type": "string" },
+    "timestamp": { "type": "string" },
+    "data": {
+      "type": "object",
+      "properties": {
+        "wind": {
+          "type": "object",
+          "properties": {
+            "avg": { "type": "number" },
+            "gust": { "type": "number" },
+            "direction": { "type": "integer", "minimum": 0, "maximum": 359 },
+            "unit": { "type": "string", "enum": ["mps", "kts"] }
+          },
+          "required": ["avg", "direction", "unit"]
+        },
+        "temperature": {
+          "type": "object",
+          "properties": {
+            "air": { "type": "number" },
+            "unit": { "type": "string", "enum": ["celsius"] }
+          },
+          "required": ["air", "unit"]
+        },
+        "pressure": {
+          "type": "object",
+          "properties": {
+            "value": { "type": "number" },
+            "unit": { "type": "string", "enum": ["hPa"] }
+          },
+          "required": ["value", "unit"]
+        }
+      },
+      "required": ["wind"]
+    },
+    "display": {
+      "type": "object",
+      "properties": {
+        "formatted": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Lines suitable for 800x480 ePaper rendering"
+        }
+      }
+    },
+    "ttl": { "type": "integer", "minimum": 30 }
+  }
+}
+
