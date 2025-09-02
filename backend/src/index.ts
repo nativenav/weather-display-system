@@ -1,6 +1,8 @@
 import { fetchBramblesWeather, parseBramblesData } from './parsers/brambles.js';
 import { fetchSeaviewWeather, parseSeaviewData } from './parsers/seaview.js';
 import { fetchLymingtonWeather, parseLymingtonData } from './parsers/lymington.js';
+import { fetchPrarionWeather, parsePrarionData } from './parsers/pioupiou-legacy.js';
+import { fetchTeteDeBalmeWeather, parseTeteDeBalmeData, fetchPlanprazWeather, parsePlanprazData } from './parsers/windbird-legacy.js';
 import { WeatherResponse, WeatherData, Env } from './types/weather.js';
 import { formatDisplayLines, createCacheKey, generateContentHash } from './utils/helpers.js';
 
@@ -32,6 +34,10 @@ export default {
         return await handleStationsRequest(corsHeaders);
       } else if (path === '/api/v1/collect' && request.method === 'POST') {
         return await handleCollectRequest(env, ctx, corsHeaders);
+      } else if (path === '/api/v1/config' && request.method === 'GET') {
+        return await handleGetConfigRequest(corsHeaders);
+      } else if (path === '/api/v1/config' && request.method === 'POST') {
+        return await handleUpdateConfigRequest(request, env, corsHeaders);
       } else if (path === '/' || path === '/health') {
         return await handleHealthRequest(corsHeaders);
       } else {
@@ -62,7 +68,7 @@ export default {
     console.log('[INFO] Cron trigger executed:', event.cron);
     
     // Collect weather data from all stations
-    const stations = ['brambles', 'seaview', 'lymington']; // All parsers ready
+    const stations = ['brambles', 'seaview', 'lymington', 'prarion', 'tetedebalme', 'planpraz']; // All parsers ready
     
     for (const stationId of stations) {
       try {
@@ -105,7 +111,7 @@ async function handleWeatherRequest(
   }
   
   // Check if station is supported
-  const supportedStations = ['brambles', 'seaview', 'lymington']; // All stations supported
+  const supportedStations = ['brambles', 'seaview', 'lymington', 'prarion', 'tetedebalme', 'planpraz']; // All stations supported
   if (!supportedStations.includes(stationId)) {
     return new Response(JSON.stringify({
       error: 'Not Found',
@@ -212,6 +218,30 @@ async function handleStationsRequest(corsHeaders: Record<string, string>): Promi
       description: 'Lymington Harbour weather station',
       refreshInterval: 5, // minutes
       status: 'active'
+    },
+    {
+      id: 'prarion',
+      name: 'Prarion (Les Houches)',
+      location: 'Chamonix Valley, France (1,865m)',
+      description: 'Wind station, Pioupiou 521, paragliding takeoff',
+      refreshInterval: 5, // minutes
+      status: 'active'
+    },
+    {
+      id: 'tetedebalme',
+      name: 'Tête de Balme',
+      location: 'Chamonix Valley, France (2,204m)',
+      description: 'Wind station, Windbird 1702, valley information',
+      refreshInterval: 5, // minutes
+      status: 'active'
+    },
+    {
+      id: 'planpraz',
+      name: 'Planpraz',
+      location: 'Chamonix Valley, France (1,958m)',
+      description: 'Wind station, Windbird 1724, paragliding takeoff',
+      refreshInterval: 5, // minutes
+      status: 'active'
     }
   ];
   
@@ -234,7 +264,7 @@ async function handleCollectRequest(
   const startTime = Date.now();
   const results: Record<string, any> = {};
   
-  const stations = ['brambles', 'seaview', 'lymington']; // All stations available
+  const stations = ['brambles', 'seaview', 'lymington', 'prarion', 'tetedebalme', 'planpraz']; // All stations available
   
   for (const stationId of stations) {
     try {
@@ -263,6 +293,92 @@ async function handleCollectRequest(
       ...corsHeaders
     }
   });
+}
+
+/**
+ * Handle configuration get request: GET /api/v1/config
+ */
+async function handleGetConfigRequest(corsHeaders: Record<string, string>): Promise<Response> {
+  const config = {
+    cronFrequency: '*/5 * * * *', // Default 5 minutes
+    stations: {
+      brambles: { enabled: true },
+      seaview: { enabled: true },
+      lymington: { enabled: true },
+      prarion: { enabled: true },
+      tetedebalme: { enabled: true },
+      planpraz: { enabled: true }
+    },
+    version: '0.1.0',
+    lastUpdated: new Date().toISOString()
+  };
+  
+  return new Response(JSON.stringify(config, null, 2), {
+    headers: {
+      'Content-Type': 'application/json',
+      ...corsHeaders
+    }
+  });
+}
+
+/**
+ * Handle configuration update request: POST /api/v1/config
+ */
+async function handleUpdateConfigRequest(
+  request: Request,
+  env: Env,
+  corsHeaders: Record<string, string>
+): Promise<Response> {
+  try {
+    const body = await request.json();
+    
+    // Validate the request body
+    if (typeof body !== 'object' || body === null) {
+      return new Response(JSON.stringify({
+        error: 'Bad Request',
+        message: 'Invalid JSON body'
+      }), {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      });
+    }
+    
+    // For now, we'll just log the configuration update
+    // In a real implementation, you'd store this in KV storage
+    console.log('[INFO] Configuration update requested:', body);
+    
+    // Respond with the updated configuration
+    const updatedConfig = {
+      ...body,
+      lastUpdated: new Date().toISOString()
+    };
+    
+    return new Response(JSON.stringify({
+      message: 'Configuration updated successfully',
+      config: updatedConfig
+    }, null, 2), {
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+    
+  } catch (error) {
+    console.error('[ERROR] Configuration update failed:', error);
+    return new Response(JSON.stringify({
+      error: 'Bad Request',
+      message: 'Invalid JSON format'
+    }), {
+      status: 400,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  }
 }
 
 /**
@@ -316,6 +432,30 @@ async function collectStationData(stationId: string, env: Env): Promise<WeatherR
           weatherData = parseResult.data;
         }
       }
+    } else if (stationId === 'prarion') {
+      const fetchResult = await fetchPrarionWeather();
+      if (fetchResult.success && fetchResult.data) {
+        const parseResult = parsePrarionData(fetchResult.data);
+        if (parseResult.success && parseResult.data) {
+          weatherData = parseResult.data;
+        }
+      }
+    } else if (stationId === 'tetedebalme') {
+      const fetchResult = await fetchTeteDeBalmeWeather();
+      if (fetchResult.success && fetchResult.data) {
+        const parseResult = parseTeteDeBalmeData(fetchResult.data);
+        if (parseResult.success && parseResult.data) {
+          weatherData = parseResult.data;
+        }
+      }
+    } else if (stationId === 'planpraz') {
+      const fetchResult = await fetchPlanprazWeather();
+      if (fetchResult.success && fetchResult.data) {
+        const parseResult = parsePlanprazData(fetchResult.data);
+        if (parseResult.success && parseResult.data) {
+          weatherData = parseResult.data;
+        }
+      }
     }
     
     if (!weatherData || !weatherData.isValid) {
@@ -340,7 +480,7 @@ async function collectStationData(stationId: string, env: Env): Promise<WeatherR
     };
     
     // Add optional data if available
-    if (weatherData.temperature > 0) {
+    if (weatherData.temperature > -50) { // Handle alpine temperatures (can be negative)
       response.data.temperature = {
         air: weatherData.temperature,
         unit: "celsius"

@@ -3,15 +3,13 @@ main = "src/index.ts"
 compatibility_date = "2024-08-30"
 compatibility_flags = ["nodejs_compat"]
 
-# Workers Analytics Engine
-[analytics_engine_datasets]
-# No analytics datasets configured yet
+# Workers Analytics Engine - none configured
 
 # KV namespaces for weather data caching
 [[kv_namespaces]]
 binding = "WEATHER_CACHE"
-id = "weather_cache_production"
-preview_id = "weather_cache_preview"
+id = "c041bceafa0146e0a2c58629ef7e0852"
+preview_id = "fc2023f1e990446ebdf656f2a892ec5e"
 
 # Cron triggers for weather data collection
 [triggers]
@@ -35,7 +33,7 @@ ENVIRONMENT = "production"
 [env.development]
 [[env.development.kv_namespaces]]
 binding = "WEATHER_CACHE"
-id = "weather_cache_development"
+id = "8388f5851c3e47b49b3a6596b94c7a9a"
 
 [env.development.vars]
 ENVIRONMENT = "development"

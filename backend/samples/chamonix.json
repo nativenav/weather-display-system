@@ -1,0 +1,44 @@
+{
+  "coord": {
+    "lon": 6.8694,
+    "lat": 45.9237
+  },
+  "weather": [
+    {
+      "id": 801,
+      "main": "Clouds",
+      "description": "few clouds",
+      "icon": "02d"
+    }
+  ],
+  "base": "stations",
+  "main": {
+    "temp": 18.5,
+    "feels_like": 17.8,
+    "temp_min": 16.2,
+    "temp_max": 20.1,
+    "pressure": 1015,
+    "humidity": 65
+  },
+  "visibility": 10000,
+  "wind": {
+    "speed": 3.2,
+    "deg": 245,
+    "gust": 5.1
+  },
+  "clouds": {
+    "all": 20
+  },
+  "dt": 1693659600,
+  "sys": {
+    "type": 2,
+    "id": 2003,
+    "country": "FR",
+    "sunrise": 1693636548,
+    "sunset": 1693684820
+  },
+  "timezone": 7200,
+  "id": 3026496,
+  "name": "Chamonix-Mont-Blanc",
+  "cod": 200
+}

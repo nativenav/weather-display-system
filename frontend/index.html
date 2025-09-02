@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Display System - Management</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌤️ Weather Display System</h1>
+            <p>Management Interface</p>
+            <div class="status-indicator">
+                <span id="backend-status" class="status offline">Checking...</span>
+            </div>
+        </header>
+
+        <main>
+            <!-- System Configuration -->
+            <section class="card">
+                <h2>⚙️ System Configuration</h2>
+                <div class="config-grid">
+                    <div class="config-item">
+                        <label for="cron-frequency">Collection Frequency</label>
+                        <select id="cron-frequency">
+                            <option value="*/5 * * * *">Every 5 minutes</option>
+                            <option value="*/10 * * * *">Every 10 minutes</option>
+                            <option value="*/15 * * * *">Every 15 minutes</option>
+                            <option value="*/30 * * * *">Every 30 minutes</option>
+                            <option value="0 * * * *">Every hour</option>
+                        </select>
+                        <button id="update-cron" class="btn btn-primary">Update</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Station Management -->
+            <section class="card">
+                <h2>📍 Weather Stations</h2>
+                <div id="stations-container">
+                    <!-- Stations will be loaded here -->
+                </div>
+                <div class="actions">
+                    <button id="refresh-stations" class="btn btn-secondary">🔄 Refresh Stations</button>
+                    <button id="collect-all" class="btn btn-primary">📊 Collect All Data</button>
+                </div>
+            </section>
+
+            <!-- Latest Data -->
+            <section class="card">
+                <h2>📊 Latest Weather Data</h2>
+                <div class="data-controls">
+                    <button id="refresh-data" class="btn btn-secondary">🔄 Refresh Data</button>
+                    <span id="last-refresh" class="timestamp"></span>
+                </div>
+                <div id="weather-data-container">
+                    <!-- Weather data will be loaded here -->
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Weather Display System v0.1.0</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

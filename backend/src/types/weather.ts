@@ -77,6 +77,7 @@ export interface FetchResult {
 export interface Env {
   WEATHER_CACHE: KVNamespace;
   ENVIRONMENT: string;
+  OWM_API_KEY: string; // OpenWeatherMap API key
 }
 
 // Utility type for hex data parsing (Seaview station)
