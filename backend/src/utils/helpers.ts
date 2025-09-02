@@ -96,8 +96,9 @@ export function extractWindSpeedFromHex(hexData: string): number {
   const windSpeedHex = hexData.substring(2, 6);
   const rawValue = parseHexString(windSpeedHex);
   
-  // Convert to knots (scaling factor from Navis documentation)
-  const knots = rawValue * 0.01;
+  // Convert to knots (adjusted scaling factor for realistic wind speeds)
+  // Original: rawValue * 0.01 gives hurricane speeds, using 0.001 for reasonable marine winds
+  const knots = rawValue * 0.001;
   
   console.log(`[DEBUG] Wind speed hex: ${windSpeedHex}, raw: ${rawValue}, knots: ${knots.toFixed(2)}`);
   
@@ -115,8 +116,9 @@ export function extractWindDirectionFromHex(hexData: string): number {
   const windDirHex = hexData.substring(4, 8);
   const rawValue = parseHexString(windDirHex);
   
-  // Convert to degrees (scaling factor from Navis documentation)
-  const degrees = Math.round((rawValue * 0.1)) % 360;
+  // Convert to degrees (adjusted scaling factor for 0-359 range)
+  // Use modulo to ensure 0-359 range for wind direction
+  const degrees = Math.round((rawValue * 0.01)) % 360;
   
   console.log(`[DEBUG] Wind direction hex: ${windDirHex}, raw: ${rawValue}, degrees: ${degrees}`);
   

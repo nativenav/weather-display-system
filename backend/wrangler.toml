@@ -5,6 +5,7 @@ compatibility_flags = ["nodejs_compat"]
 
 # Workers Analytics Engine
 [analytics_engine_datasets]
+# No analytics datasets configured yet
 
 # KV namespaces for weather data caching
 [[kv_namespaces]]

@@ -1,4 +1,6 @@
 import { fetchBramblesWeather, parseBramblesData } from './parsers/brambles.js';
+import { fetchSeaviewWeather, parseSeaviewData } from './parsers/seaview.js';
+import { fetchLymingtonWeather, parseLymingtonData } from './parsers/lymington.js';
 import { WeatherResponse, WeatherData, Env } from './types/weather.js';
 import { formatDisplayLines, createCacheKey, generateContentHash } from './utils/helpers.js';
 
@@ -60,7 +62,7 @@ export default {
     console.log('[INFO] Cron trigger executed:', event.cron);
     
     // Collect weather data from all stations
-    const stations = ['brambles']; // Add 'seaview', 'lymington' when parsers are ready
+    const stations = ['brambles', 'seaview', 'lymington']; // All parsers ready
     
     for (const stationId of stations) {
       try {
@@ -103,7 +105,7 @@ async function handleWeatherRequest(
   }
   
   // Check if station is supported
-  const supportedStations = ['brambles']; // Add others as we implement them
+  const supportedStations = ['brambles', 'seaview', 'lymington']; // All stations supported
   if (!supportedStations.includes(stationId)) {
     return new Response(JSON.stringify({
       error: 'Not Found',
@@ -194,8 +196,23 @@ async function handleStationsRequest(corsHeaders: Record<string, string>): Promi
       description: 'Southampton VTS marine weather station',
       refreshInterval: 5, // minutes
       status: 'active'
+    },
+    {
+      id: 'seaview',
+      name: 'Seaview',
+      location: 'Isle of Wight, UK',
+      description: 'Navis live marine weather data',
+      refreshInterval: 2, // minutes
+      status: 'active'
+    },
+    {
+      id: 'lymington',
+      name: 'Lymington',
+      location: 'Hampshire, UK',
+      description: 'Lymington Harbour weather station',
+      refreshInterval: 5, // minutes
+      status: 'active'
     }
-    // Add other stations as we implement them
   ];
   
   return new Response(JSON.stringify({ stations }, null, 2), {
@@ -217,7 +234,7 @@ async function handleCollectRequest(
   const startTime = Date.now();
   const results: Record<string, any> = {};
   
-  const stations = ['brambles']; // Add others as we implement them
+  const stations = ['brambles', 'seaview', 'lymington']; // All stations available
   
   for (const stationId of stations) {
     try {
@@ -283,8 +300,23 @@ async function collectStationData(stationId: string, env: Env): Promise<WeatherR
           weatherData = parseResult.data;
         }
       }
+    } else if (stationId === 'seaview') {
+      const fetchResult = await fetchSeaviewWeather();
+      if (fetchResult.success && fetchResult.data) {
+        const parseResult = parseSeaviewData(fetchResult.data);
+        if (parseResult.success && parseResult.data) {
+          weatherData = parseResult.data;
+        }
+      }
+    } else if (stationId === 'lymington') {
+      const fetchResult = await fetchLymingtonWeather();
+      if (fetchResult.success && fetchResult.data) {
+        const parseResult = parseLymingtonData(fetchResult.data);
+        if (parseResult.success && parseResult.data) {
+          weatherData = parseResult.data;
+        }
+      }
     }
-    // Add other station parsers here as we implement them
     
     if (!weatherData || !weatherData.isValid) {
       console.error(`[ERROR] No valid data collected from ${stationId}`);
