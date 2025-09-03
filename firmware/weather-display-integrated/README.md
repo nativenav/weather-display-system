@@ -1,6 +1,22 @@
 # Weather Display Integrated Firmware
 
+⚠️ **BREAKING CHANGE v1.1 (September 2025)**: **Firmware update required!**
+
 Complete firmware for XIAO ESP32C3 + 7.5" ePaper weather display that automatically connects to the Weather Display System backend.
+
+## 🔄 Latest Changes (v1.1)
+
+**Regional Wind Speed Units** - JSON API now returns appropriate units per region:
+- **Solent marine stations**: Wind speeds in knots (kt)
+- **Chamonix alpine stations**: Wind speeds in km/h
+- **Unknown regions**: Wind speeds in m/s
+
+**Firmware Updates Required**:
+- Updated to read dynamic units from JSON instead of hardcoded "m/s"
+- Added `windUnit` field to station data structure
+- Display now shows proper regional units (kt/km/h/m/s)
+
+**Backward Compatibility**: Old firmware will continue working but display incorrect units.
 
 ## 🚀 Features
 
@@ -85,8 +101,8 @@ The 7.5" ePaper display shows weather data for all 3 stations in the assigned re
 **Three Columns** (one per station):
 - **Station Name**: Large text (Prarion, Planpraz, Tête de Balme)
 - **WIND DIR**: Direction in degrees (no decimals)
-- **WIND SPD**: Average wind speed (1 decimal, m/s)
-- **WIND GUST**: Peak gust speed (1 decimal, m/s)  
+- **WIND SPD**: Average wind speed (1 decimal, kt/km/h/m/s)
+- **WIND GUST**: Peak gust speed (1 decimal, kt/km/h/m/s)  
 - **AIR TEMP**: Temperature (1 decimal, deg C) or "--" if unavailable
 - **UPDATED**: Last update time (HH:MM UTC)
 
