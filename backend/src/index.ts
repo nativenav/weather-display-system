@@ -6,17 +6,23 @@ import { fetchTeteDeBalmeWeather, parseTeteDeBalmeData, fetchPlanprazWeather, pa
 import { WeatherResponse, WeatherData, Env } from './types/weather.js';
 import { formatDisplayLines, createCacheKey, generateContentHash } from './utils/helpers.js';
 
-// Endpoint management interfaces
-interface DeviceInfo {
-  deviceId: string;
-  macAddress?: string;
-  lastSeen: string;
-  userAgent: string;
-  ipAddress: string;
-  requestCount: number;
-  isActive: boolean;
-}
+// Device management imports
+import { DeviceInfo, DeviceRegistrationResponse, DeviceNotFoundError, InvalidMacAddressError } from './types/devices.js';
+import { getAllRegions, getDefaultStation, DEFAULT_REGION } from './config/regions.js';
+import { 
+  normalizeDeviceId, 
+  formatMacAddress, 
+  validateMacAddress, 
+  getDevice, 
+  saveDevice, 
+  createNewDevice, 
+  updateDeviceActivity,
+  setDeviceIdentifyFlag,
+  clearDeviceIdentifyFlag,
+  extractDeviceInfo 
+} from './utils/devices.js';
 
+// Legacy interfaces (keeping for compatibility)
 interface APIKeyInfo {
   keyId: string;
   name: string;
@@ -40,8 +46,8 @@ export default {
     // CORS headers for all responses
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, X-Device-MAC, X-Firmware-Version',
     };
     
     // Handle preflight requests
@@ -55,6 +61,20 @@ export default {
         return await handleWeatherRequest(request, env, ctx, corsHeaders);
       } else if (path === '/api/v1/stations') {
         return await handleStationsRequest(corsHeaders);
+      } else if (path === '/api/v1/regions') {
+        return await handleRegionsRequest(corsHeaders);
+      } else if (path === '/api/v1/devices' && request.method === 'GET') {
+        return await handleGetDevicesRequest(corsHeaders);
+      } else if (path === '/api/v1/devices' && request.method === 'POST') {
+        return await handleCreateDeviceRequest(request, env, corsHeaders);
+      } else if (path.startsWith('/api/v1/devices/') && request.method === 'GET') {
+        return await handleGetDeviceRequest(request, env, corsHeaders);
+      } else if (path.startsWith('/api/v1/devices/') && request.method === 'PATCH') {
+        return await handleUpdateDeviceRequest(request, env, corsHeaders);
+      } else if (path.startsWith('/api/v1/devices/') && path.endsWith('/identify') && request.method === 'POST') {
+        return await handleIdentifyDeviceRequest(request, env, corsHeaders);
+      } else if (path.startsWith('/api/v1/devices/') && path.endsWith('/heartbeat') && request.method === 'POST') {
+        return await handleHeartbeatRequest(request, env, corsHeaders);
       } else if (path === '/api/v1/collect' && request.method === 'POST') {
         return await handleCollectRequest(env, ctx, corsHeaders);
       } else if (path === '/api/v1/config' && request.method === 'GET') {
@@ -108,6 +128,7 @@ export default {
 
 /**
  * Handle weather API requests: GET /api/v1/weather/{station}
+ * Also handles automatic device registration when mac parameter is provided
  */
 async function handleWeatherRequest(
   request: Request, 
@@ -119,6 +140,7 @@ async function handleWeatherRequest(
   const pathParts = url.pathname.split('/');
   const stationId = pathParts[4]; // /api/v1/weather/{station}
   const format = url.searchParams.get('format'); // ?format=display
+  const macParam = url.searchParams.get('mac'); // ?mac=deviceid for auto-registration
   
   if (!stationId) {
     return new Response(JSON.stringify({
@@ -149,18 +171,87 @@ async function handleWeatherRequest(
   }
   
   try {
+    // Handle device auto-registration if MAC parameter provided
+    let deviceRegistrationResponse: DeviceRegistrationResponse | null = null;
+    let device: DeviceInfo | null = null;
+    
+    if (macParam) {
+      const deviceId = normalizeDeviceId(macParam);
+      
+      // Check if device exists
+      device = await getDevice(deviceId, env);
+      
+      if (!device) {
+        // Auto-register new device
+        console.log(`[INFO] Auto-registering new device: ${deviceId}`);
+        
+        const deviceInfo = extractDeviceInfo(request);
+        const macAddress = formatMacAddress(deviceId);
+        
+        // Determine region from station (simplistic approach)
+        const region = ['prarion', 'tetedebalme', 'planpraz'].includes(stationId) ? 'chamonix' : 'solent';
+        
+        device = createNewDevice(
+          deviceId,
+          macAddress,
+          region,
+          undefined, // Auto-generated nickname
+          deviceInfo.userAgent,
+          deviceInfo.firmware,
+          deviceInfo.ipAddress
+        );
+        
+        await saveDevice(device, env);
+        
+        deviceRegistrationResponse = {
+          success: true,
+          deviceId: device.deviceId,
+          nickname: device.nickname,
+          stationId: device.stationId,
+          region: device.region,
+          message: 'Device auto-registered successfully',
+          isNewDevice: true
+        };
+        
+        console.log(`[INFO] New device auto-registered: ${deviceId} -> ${device.stationId}`);
+      } else {
+        // Update existing device activity
+        const deviceInfo = extractDeviceInfo(request);
+        const updatedDevice = updateDeviceActivity(
+          device,
+          deviceInfo.ipAddress,
+          deviceInfo.userAgent
+        );
+        
+        await saveDevice(updatedDevice, env);
+        device = updatedDevice;
+        
+        console.log(`[INFO] Device activity updated: ${deviceId}`);
+      }
+      
+      // Use the device's assigned station instead of the requested one
+      // This allows the device to get data for its assigned station
+      // regardless of what station it requested
+      if (device.stationId !== stationId) {
+        console.log(`[INFO] Redirecting device ${deviceId} from ${stationId} to assigned station ${device.stationId}`);
+      }
+    }
+    
+    // Determine which station to get data for
+    const targetStationId = device?.stationId || stationId;
+    
     // Try to get cached data first
-    const cacheKey = createCacheKey(stationId);
+    const cacheKey = createCacheKey(targetStationId);
     const cachedData = await env.WEATHER_CACHE.get(cacheKey, { type: 'json' });
     
     let weatherData: WeatherResponse;
     
     if (cachedData) {
-      console.log(`[INFO] Serving cached data for ${stationId}`);
+      console.log(`[INFO] Serving cached data for ${targetStationId}`);
       weatherData = cachedData as WeatherResponse;
     } else {
-      console.log(`[INFO] No cached data for ${stationId}, fetching fresh`);
-      const freshData = await collectStationData(stationId, env);
+      console.log(`[INFO] No cached data for ${targetStationId}, fetching fresh`);
+      const freshData = await collectStationData(targetStationId, env);
       if (!freshData) {
         throw new Error('Failed to collect fresh data');
       }
@@ -188,7 +279,33 @@ async function handleWeatherRequest(
       });
     }
     
-    // Return JSON format
+    // For device requests, enhance the response with device-specific data
+    if (device) {
+      const deviceResponse = {
+        ...weatherData,
+        // Add device-specific fields
+        identify: device.identifyFlag || false,
+        deviceRegistration: deviceRegistrationResponse
+      };
+      
+      // Clear the identify flag after sending it
+      if (device.identifyFlag) {
+        await clearDeviceIdentifyFlag(device.deviceId, env);
+      }
+      
+      // Return device-enhanced response
+      const statusCode = deviceRegistrationResponse ? 201 : 200;
+      return new Response(JSON.stringify(deviceResponse, null, 2), {
+        status: statusCode,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, max-age=300', // 5 minutes
+          ...corsHeaders
+        }
+      });
+    }
+    
+    // Return standard JSON format for non-device requests
     return new Response(JSON.stringify(weatherData, null, 2), {
       headers: {
         'Content-Type': 'application/json',
@@ -532,5 +649,418 @@ async function collectStationData(stationId: string, env: Env): Promise<WeatherR
     const totalTime = Date.now() - startTime;
     console.error(`[ERROR] Failed to collect data from ${stationId} after ${totalTime}ms:`, error);
     return null;
+  }
+}
+
+// ===============================================================================
+// DEVICE MANAGEMENT API HANDLERS
+// ===============================================================================
+
+/**
+ * Handle regions list request: GET /api/v1/regions
+ */
+async function handleRegionsRequest(corsHeaders: Record<string, string>): Promise<Response> {
+  const regions = getAllRegions();
+  
+  return new Response(JSON.stringify({ regions }, null, 2), {
+    headers: {
+      'Content-Type': 'application/json',
+      ...corsHeaders
+    }
+  });
+}
+
+/**
+ * Handle get all devices request: GET /api/v1/devices
+ */
+async function handleGetDevicesRequest(corsHeaders: Record<string, string>): Promise<Response> {
+  // For now, return empty list with note about simplified implementation
+  // In production, you'd implement a device registry
+  const devices: DeviceInfo[] = [];
+  
+  return new Response(JSON.stringify({
+    devices,
+    message: 'Device registry not yet implemented - devices auto-register on first connection'
+  }, null, 2), {
+    headers: {
+      'Content-Type': 'application/json',
+      ...corsHeaders
+    }
+  });
+}
+
+/**
+ * Handle create device request: POST /api/v1/devices
+ */
+async function handleCreateDeviceRequest(
+  request: Request,
+  env: Env,
+  corsHeaders: Record<string, string>
+): Promise<Response> {
+  try {
+    const body = await request.json();
+    const deviceInfo = extractDeviceInfo(request);
+    
+    // Get MAC address from header or body
+    const macAddress = request.headers.get('X-Device-MAC') || body.macAddress;
+    if (!macAddress || !validateMacAddress(macAddress)) {
+      return new Response(JSON.stringify({
+        error: 'Bad Request',
+        message: 'Valid MAC address is required (X-Device-MAC header or macAddress in body)'
+      }), {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      });
+    }
+    
+    const deviceId = normalizeDeviceId(macAddress);
+    
+    // Check if device already exists
+    const existingDevice = await getDevice(deviceId, env);
+    if (existingDevice) {
+      return new Response(JSON.stringify({
+        error: 'Conflict',
+        message: 'Device already exists',
+        deviceId
+      }), {
+        status: 409,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      });
+    }
+    
+    // Create new device
+    const region = body.region || DEFAULT_REGION;
+    const device = createNewDevice(
+      deviceId,
+      formatMacAddress(deviceId),
+      region,
+      body.nickname,
+      deviceInfo.userAgent,
+      deviceInfo.firmware,
+      deviceInfo.ipAddress
+    );
+    
+    await saveDevice(device, env);
+    
+    const response: DeviceRegistrationResponse = {
+      success: true,
+      deviceId: device.deviceId,
+      nickname: device.nickname,
+      stationId: device.stationId,
+      region: device.region,
+      message: 'Device registered successfully',
+      isNewDevice: true
+    };
+    
+    console.log(`[INFO] New device registered: ${deviceId} -> ${device.stationId}`);
+    
+    return new Response(JSON.stringify(response, null, 2), {
+      status: 201,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+    
+  } catch (error) {
+    console.error('[ERROR] Device creation failed:', error);
+    return new Response(JSON.stringify({
+      error: 'Bad Request',
+      message: 'Invalid request format'
+    }), {
+      status: 400,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  }
+}
+
+/**
+ * Handle get device request: GET /api/v1/devices/{deviceId}
+ */
+async function handleGetDeviceRequest(
+  request: Request,
+  env: Env,
+  corsHeaders: Record<string, string>
+): Promise<Response> {
+  const url = new URL(request.url);
+  const pathParts = url.pathname.split('/');
+  const deviceId = pathParts[4]; // /api/v1/devices/{deviceId}
+  
+  if (!deviceId) {
+    return new Response(JSON.stringify({
+      error: 'Bad Request',
+      message: 'Device ID is required'
+    }), {
+      status: 400,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  }
+  
+  try {
+    const device = await getDevice(deviceId, env);
+    if (!device) {
+      return new Response(JSON.stringify({
+        error: 'Not Found',
+        message: `Device not found: ${deviceId}`
+      }), {
+        status: 404,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      });
+    }
+    
+    return new Response(JSON.stringify(device, null, 2), {
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+    
+  } catch (error) {
+    console.error(`[ERROR] Get device failed for ${deviceId}:`, error);
+    return new Response(JSON.stringify({
+      error: 'Internal Server Error',
+      message: 'Failed to retrieve device'
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  }
+}
+
+/**
+ * Handle update device request: PATCH /api/v1/devices/{deviceId}
+ */
+async function handleUpdateDeviceRequest(
+  request: Request,
+  env: Env,
+  corsHeaders: Record<string, string>
+): Promise<Response> {
+  const url = new URL(request.url);
+  const pathParts = url.pathname.split('/');
+  const deviceId = pathParts[4]; // /api/v1/devices/{deviceId}
+  
+  if (!deviceId) {
+    return new Response(JSON.stringify({
+      error: 'Bad Request',
+      message: 'Device ID is required'
+    }), {
+      status: 400,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  }
+  
+  try {
+    const body = await request.json();
+    const device = await getDevice(deviceId, env);
+    
+    if (!device) {
+      return new Response(JSON.stringify({
+        error: 'Not Found',
+        message: `Device not found: ${deviceId}`
+      }), {
+        status: 404,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      });
+    }
+    
+    // Update device fields
+    const updatedDevice: DeviceInfo = {
+      ...device,
+      nickname: body.nickname || device.nickname,
+      stationId: body.stationId || device.stationId,
+      region: body.region || device.region
+    };
+    
+    await saveDevice(updatedDevice, env);
+    
+    console.log(`[INFO] Device updated: ${deviceId}`);
+    
+    return new Response(JSON.stringify(updatedDevice, null, 2), {
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+    
+  } catch (error) {
+    console.error(`[ERROR] Update device failed for ${deviceId}:`, error);
+    return new Response(JSON.stringify({
+      error: 'Bad Request',
+      message: 'Invalid request format'
+    }), {
+      status: 400,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  }
+}
+
+/**
+ * Handle identify device request: POST /api/v1/devices/{deviceId}/identify
+ */
+async function handleIdentifyDeviceRequest(
+  request: Request,
+  env: Env,
+  corsHeaders: Record<string, string>
+): Promise<Response> {
+  const url = new URL(request.url);
+  const pathParts = url.pathname.split('/');
+  const deviceId = pathParts[4]; // /api/v1/devices/{deviceId}/identify
+  
+  if (!deviceId) {
+    return new Response(JSON.stringify({
+      error: 'Bad Request',
+      message: 'Device ID is required'
+    }), {
+      status: 400,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  }
+  
+  try {
+    await setDeviceIdentifyFlag(deviceId, env);
+    
+    console.log(`[INFO] Identify flag set for device: ${deviceId}`);
+    
+    return new Response(JSON.stringify({
+      message: 'Identify request sent to device',
+      deviceId,
+      timestamp: new Date().toISOString()
+    }, null, 2), {
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+    
+  } catch (error) {
+    if (error instanceof DeviceNotFoundError) {
+      return new Response(JSON.stringify({
+        error: 'Not Found',
+        message: error.message
+      }), {
+        status: 404,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      });
+    }
+    
+    console.error(`[ERROR] Identify request failed for ${deviceId}:`, error);
+    return new Response(JSON.stringify({
+      error: 'Internal Server Error',
+      message: 'Failed to send identify request'
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  }
+}
+
+/**
+ * Handle heartbeat request: POST /api/v1/devices/{deviceId}/heartbeat
+ */
+async function handleHeartbeatRequest(
+  request: Request,
+  env: Env,
+  corsHeaders: Record<string, string>
+): Promise<Response> {
+  const url = new URL(request.url);
+  const pathParts = url.pathname.split('/');
+  const deviceId = pathParts[4]; // /api/v1/devices/{deviceId}/heartbeat
+  
+  if (!deviceId) {
+    return new Response(JSON.stringify({
+      error: 'Bad Request',
+      message: 'Device ID is required'
+    }), {
+      status: 400,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  }
+  
+  try {
+    const device = await getDevice(deviceId, env);
+    if (!device) {
+      return new Response(JSON.stringify({
+        error: 'Not Found',
+        message: `Device not found: ${deviceId}`
+      }), {
+        status: 404,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      });
+    }
+    
+    const deviceInfo = extractDeviceInfo(request);
+    const updatedDevice = updateDeviceActivity(
+      device,
+      deviceInfo.ipAddress,
+      deviceInfo.userAgent
+    );
+    
+    await saveDevice(updatedDevice, env);
+    
+    return new Response(JSON.stringify({
+      message: 'Heartbeat received',
+      deviceId,
+      timestamp: updatedDevice.lastSeen
+    }, null, 2), {
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+    
+  } catch (error) {
+    console.error(`[ERROR] Heartbeat failed for ${deviceId}:`, error);
+    return new Response(JSON.stringify({
+      error: 'Internal Server Error',
+      message: 'Failed to process heartbeat'
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
   }
 }

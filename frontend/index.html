@@ -17,47 +17,79 @@
         </header>
 
         <main>
-            <!-- System Configuration -->
-            <section class="card">
-                <h2>⚙️ System Configuration</h2>
-                <div class="config-grid">
-                    <div class="config-item">
-                        <label for="cron-frequency">Collection Frequency</label>
-                        <select id="cron-frequency">
-                            <option value="*/5 * * * *">Every 5 minutes</option>
-                            <option value="*/10 * * * *">Every 10 minutes</option>
-                            <option value="*/15 * * * *">Every 15 minutes</option>
-                            <option value="*/30 * * * *">Every 30 minutes</option>
-                            <option value="0 * * * *">Every hour</option>
-                        </select>
-                        <button id="update-cron" class="btn btn-primary">Update</button>
+            <!-- Navigation Tabs -->
+            <nav class="tabs-nav">
+                <button class="tab-button active" data-tab="overview">📊 Overview</button>
+                <button class="tab-button" data-tab="devices">📱 Devices</button>
+                <button class="tab-button" data-tab="stations">📍 Stations</button>
+                <button class="tab-button" data-tab="config">⚙️ Configuration</button>
+            </nav>
+
+            <!-- Overview Tab -->
+            <div class="tab-content active" id="overview-tab">
+                <!-- Latest Data -->
+                <section class="card">
+                    <h2>📊 Latest Weather Data</h2>
+                    <div class="data-controls">
+                        <button id="refresh-data" class="btn btn-secondary">🔄 Refresh Data</button>
+                        <span id="last-refresh" class="timestamp"></span>
                     </div>
-                </div>
-            </section>
+                    <div id="weather-data-container">
+                        <!-- Weather data will be loaded here -->
+                    </div>
+                </section>
+            </div>
 
-            <!-- Station Management -->
-            <section class="card">
-                <h2>📍 Weather Stations</h2>
-                <div id="stations-container">
-                    <!-- Stations will be loaded here -->
-                </div>
-                <div class="actions">
-                    <button id="refresh-stations" class="btn btn-secondary">🔄 Refresh Stations</button>
-                    <button id="collect-all" class="btn btn-primary">📊 Collect All Data</button>
-                </div>
-            </section>
+            <!-- Devices Tab -->
+            <div class="tab-content" id="devices-tab">
+                <section class="card">
+                    <h2>📱 Device Management</h2>
+                    <div class="section-header">
+                        <p>Manage ESP32C3 weather display devices. Devices auto-register when they connect for the first time.</p>
+                        <div class="actions">
+                            <button id="refresh-devices" class="btn btn-secondary">🔄 Refresh Devices</button>
+                            <button id="scan-devices" class="btn btn-primary">🔍 Scan for New Devices</button>
+                        </div>
+                    </div>
+                    <div id="devices-container">
+                        <!-- Devices will be loaded here -->
+                    </div>
+                </section>
+            </div>
 
-            <!-- Latest Data -->
-            <section class="card">
-                <h2>📊 Latest Weather Data</h2>
-                <div class="data-controls">
-                    <button id="refresh-data" class="btn btn-secondary">🔄 Refresh Data</button>
-                    <span id="last-refresh" class="timestamp"></span>
-                </div>
-                <div id="weather-data-container">
-                    <!-- Weather data will be loaded here -->
-                </div>
-            </section>
+            <!-- Stations Tab -->
+            <div class="tab-content" id="stations-tab">
+                <section class="card">
+                    <h2>📍 Weather Stations</h2>
+                    <div id="stations-container">
+                        <!-- Stations will be loaded here -->
+                    </div>
+                    <div class="actions">
+                        <button id="refresh-stations" class="btn btn-secondary">🔄 Refresh Stations</button>
+                        <button id="collect-all" class="btn btn-primary">📊 Collect All Data</button>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Configuration Tab -->
+            <div class="tab-content" id="config-tab">
+                <section class="card">
+                    <h2>⚙️ System Configuration</h2>
+                    <div class="config-grid">
+                        <div class="config-item">
+                            <label for="cron-frequency">Collection Frequency</label>
+                            <select id="cron-frequency">
+                                <option value="*/5 * * * *">Every 5 minutes</option>
+                                <option value="*/10 * * * *">Every 10 minutes</option>
+                                <option value="*/15 * * * *">Every 15 minutes</option>
+                                <option value="*/30 * * * *">Every 30 minutes</option>
+                                <option value="0 * * * *">Every hour</option>
+                            </select>
+                            <button id="update-cron" class="btn btn-primary">Update</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
         </main>
 
         <footer>

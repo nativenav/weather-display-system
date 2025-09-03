@@ -1,8 +1,8 @@
 # Weather Display System - Project Complete! 🎉
 
-## 🚀 Project Status: **PRODUCTION READY**
+## 🚀 Project Status: **PRODUCTION DEPLOYED WITH DEVICE MANAGEMENT**
 
-The Weather Display System has been successfully completed and deployed with full production capabilities.
+The Weather Display System has been successfully completed and deployed with full production capabilities including comprehensive ESP32C3 device management.
 
 ## ✅ What We've Built
 
@@ -28,18 +28,29 @@ The Weather Display System has been successfully completed and deployed with ful
 # Weather data (JSON)
 GET https://weather-backend.nativenav.workers.dev/api/v1/weather/{station}
 
+# Weather data with device auto-registration
+GET https://weather-backend.nativenav.workers.dev/api/v1/weather/{station}?mac={device_mac}&firmware={version}
+
 # Display format (ESP32C3 optimized)
 GET https://weather-backend.nativenav.workers.dev/api/v1/weather/{station}?format=display
 
-# System health
-GET https://weather-backend.nativenav.workers.dev/health
+# Device Management
+GET https://weather-backend.nativenav.workers.dev/api/v1/devices
+GET https://weather-backend.nativenav.workers.dev/api/v1/devices/{id}
+PATCH https://weather-backend.nativenav.workers.dev/api/v1/devices/{id}
+POST https://weather-backend.nativenav.workers.dev/api/v1/devices/{id}/identify
 
-# All stations
+# System endpoints
+GET https://weather-backend.nativenav.workers.dev/health
 GET https://weather-backend.nativenav.workers.dev/api/v1/stations
+GET https://weather-backend.nativenav.workers.dev/api/v1/regions
 ```
 
 ### 📱 **Management Interface Features**
 - ✅ Real-time weather data display from all 6 stations
+- ✅ **ESP32C3 Device Management**: Auto-registration, renaming, station assignment
+- ✅ **Device Identification**: Remote display flash for physical device location
+- ✅ **Real-time Status**: Online/offline monitoring with activity tracking
 - ✅ Enable/disable individual weather stations  
 - ✅ Configure data collection frequency (5-60 minutes)
 - ✅ Manual data collection triggers
@@ -216,4 +227,4 @@ The system is ready for immediate use and provides an excellent foundation for f
 
 ---
 
-*System Status: ✅ **PRODUCTION READY** | Last Updated: September 2, 2025*
+*System Status: ✅ **PRODUCTION READY WITH DEVICE MANAGEMENT** | Last Updated: September 3, 2025*

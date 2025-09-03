@@ -5,6 +5,12 @@ let currentConfig = {
     cronFrequency: '*/5 * * * *'
 };
 
+// State
+let regions = [];
+let stations = [];
+let devices = [];
+let editingDeviceNickname = null;
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Weather Management Interface loaded');
@@ -14,17 +20,26 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initial load
     checkBackendStatus();
-    loadStations();
+    loadRegions();
     loadWeatherData();
 });
 
 function bindEventListeners() {
+    // Tab switching
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', () => switchTab(button.dataset.tab));
+    });
+    
     // System configuration
     document.getElementById('update-cron').addEventListener('click', updateCronFrequency);
     
     // Station management
     document.getElementById('refresh-stations').addEventListener('click', loadStations);
     document.getElementById('collect-all').addEventListener('click', collectAllData);
+    
+    // Device management
+    document.getElementById('refresh-devices').addEventListener('click', loadDevices);
+    document.getElementById('scan-devices').addEventListener('click', scanForDevices);
     
     // Weather data
     document.getElementById('refresh-data').addEventListener('click', loadWeatherData);
@@ -379,8 +394,302 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
+// ===============================================================================
+// TAB MANAGEMENT
+// ===============================================================================
+
+function switchTab(tabName) {
+    // Remove active class from all tabs and content
+    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    
+    // Add active class to selected tab and content
+    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    document.getElementById(`${tabName}-tab`).classList.add('active');
+    
+    // Load data for specific tabs when they become active
+    if (tabName === 'stations' && stations.length === 0) {
+        loadStations();
+    } else if (tabName === 'devices') {
+        loadDevices();
+    }
+}
+
+// ===============================================================================
+// DEVICE MANAGEMENT
+// ===============================================================================
+
+async function loadRegions() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/regions`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const data = await response.json();
+        regions = data.regions || [];
+        
+        console.log('Loaded regions:', regions);
+    } catch (error) {
+        console.error('Failed to load regions:', error);
+        regions = [];
+    }
+}
+
+async function loadDevices() {
+    const container = document.getElementById('devices-container');
+    container.innerHTML = '<div class="loading">Loading devices</div>';
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/devices`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        devices = data.devices || [];
+        displayDevices();
+        
+    } catch (error) {
+        console.error('Failed to load devices:', error);
+        container.innerHTML = `<div class="error">Failed to load devices: ${error.message}<br><small>Note: Devices auto-register when they first connect.</small></div>`;
+    }
+}
+
+function displayDevices() {
+    const container = document.getElementById('devices-container');
+    
+    if (!devices || devices.length === 0) {
+        container.innerHTML = `
+            <div class="error" style="background: #f3f4f6; border: 1px solid #d1d5db; color: #374151;">
+                <h3>No devices found</h3>
+                <p>Devices will auto-register here when they connect for the first time.</p>
+                <p>Make sure your ESP32C3 firmware is running and connected to WiFi.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const devicesHTML = devices.map(device => {
+        const isOnline = device.status === 'online';
+        const lastSeenTime = new Date(device.lastSeen);
+        const timeDiff = Date.now() - lastSeenTime.getTime();
+        const minutesAgo = Math.floor(timeDiff / 60000);
+        
+        let lastSeenText;
+        if (minutesAgo < 1) {
+            lastSeenText = 'Just now';
+        } else if (minutesAgo < 60) {
+            lastSeenText = `${minutesAgo} min ago`;
+        } else {
+            lastSeenText = lastSeenTime.toLocaleString();
+        }
+        
+        // Build station selector options
+        const stationOptions = regions.flatMap(region => 
+            region.stations.map(stationId => 
+                `<option value="${stationId}" ${device.stationId === stationId ? 'selected' : ''}>
+                    ${stationId} (${region.displayName})
+                </option>`
+            )
+        ).join('');
+        
+        return `
+            <div class="device-card">
+                <div class="device-header">
+                    <div>
+                        <input type="text" class="device-name ${editingDeviceNickname === device.deviceId ? 'editing' : ''}" 
+                               value="${device.nickname}" 
+                               data-device-id="${device.deviceId}"
+                               onblur="saveDeviceNickname('${device.deviceId}', this.value)"
+                               onkeydown="if(event.key==='Enter') this.blur()"
+                               ${editingDeviceNickname === device.deviceId ? 'autofocus' : 'readonly'}
+                               onclick="editDeviceNickname('${device.deviceId}')" />
+                        <div class="device-mac">${device.macAddress}</div>
+                    </div>
+                    <div class="device-status">
+                        <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
+                        ${isOnline ? 'Online' : 'Offline'}
+                    </div>
+                </div>
+                
+                <div class="device-info">
+                    <div class="device-info-item">
+                        <div class="device-info-label">Region</div>
+                        <div class="device-info-value">${device.region}</div>
+                    </div>
+                    <div class="device-info-item">
+                        <div class="device-info-label">Station</div>
+                        <div class="device-info-value">${device.stationId}</div>
+                    </div>
+                    <div class="device-info-item">
+                        <div class="device-info-label">Requests</div>
+                        <div class="device-info-value">${device.requestCount}</div>
+                    </div>
+                    <div class="device-info-item">
+                        <div class="device-info-label">Firmware</div>
+                        <div class="device-info-value">${device.firmware || 'Unknown'}</div>
+                    </div>
+                </div>
+                
+                <div class="device-controls">
+                    <select class="station-select" onchange="updateDeviceStation('${device.deviceId}', this.value)">
+                        ${stationOptions}
+                    </select>
+                    <button class="btn btn-sm btn-identify" onclick="identifyDevice('${device.deviceId}')">🔍 Identify</button>
+                    <button class="btn btn-sm btn-secondary" onclick="refreshDeviceData('${device.deviceId}')">🔄 Refresh</button>
+                </div>
+                
+                <div class="device-last-seen">
+                    Last seen: ${lastSeenText}
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    container.innerHTML = `<div class="devices-grid">${devicesHTML}</div>`;
+}
+
+async function scanForDevices() {
+    const button = document.getElementById('scan-devices');
+    const originalText = button.innerHTML;
+    
+    button.disabled = true;
+    button.innerHTML = '🔍 Scanning...';
+    
+    try {
+        showNotification('Scanning for new devices...', 'info');
+        
+        // Refresh devices list
+        await loadDevices();
+        
+        showNotification('Device scan complete', 'success');
+        
+    } catch (error) {
+        console.error('Failed to scan for devices:', error);
+        showNotification(`Failed to scan for devices: ${error.message}`, 'error');
+    } finally {
+        button.disabled = false;
+        button.innerHTML = originalText;
+    }
+}
+
+function editDeviceNickname(deviceId) {
+    if (editingDeviceNickname === deviceId) return;
+    
+    editingDeviceNickname = deviceId;
+    displayDevices();
+}
+
+async function saveDeviceNickname(deviceId, newNickname) {
+    if (editingDeviceNickname !== deviceId) return;
+    
+    editingDeviceNickname = null;
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/devices/${deviceId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ nickname: newNickname })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        // Update local device data
+        const device = devices.find(d => d.deviceId === deviceId);
+        if (device) {
+            device.nickname = newNickname;
+        }
+        
+        showNotification('Device nickname updated', 'success');
+        displayDevices();
+        
+    } catch (error) {
+        console.error('Failed to update device nickname:', error);
+        showNotification(`Failed to update nickname: ${error.message}`, 'error');
+        displayDevices();
+    }
+}
+
+async function updateDeviceStation(deviceId, newStationId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/devices/${deviceId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ stationId: newStationId })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        // Update local device data
+        const device = devices.find(d => d.deviceId === deviceId);
+        if (device) {
+            device.stationId = newStationId;
+        }
+        
+        showNotification(`Device station updated to ${newStationId}`, 'success');
+        displayDevices();
+        
+    } catch (error) {
+        console.error('Failed to update device station:', error);
+        showNotification(`Failed to update station: ${error.message}`, 'error');
+    }
+}
+
+async function identifyDevice(deviceId) {
+    const button = event.target;
+    button.classList.add('pulsing');
+    button.disabled = true;
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/devices/${deviceId}/identify`, {
+            method: 'POST'
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        showNotification('Device identify signal sent! The display should flash.', 'success');
+        
+    } catch (error) {
+        console.error('Failed to identify device:', error);
+        showNotification(`Failed to identify device: ${error.message}`, 'error');
+    } finally {
+        setTimeout(() => {
+            button.classList.remove('pulsing');
+            button.disabled = false;
+        }, 3000);
+    }
+}
+
+async function refreshDeviceData(deviceId) {
+    try {
+        showNotification('Refreshing device data...', 'info');
+        await loadDevices();
+        showNotification('Device data refreshed', 'success');
+        
+    } catch (error) {
+        console.error('Failed to refresh device data:', error);
+        showNotification(`Failed to refresh: ${error.message}`, 'error');
+    }
+}
+
 // Auto-refresh functionality
 setInterval(() => {
     checkBackendStatus();
     loadWeatherData();
+    
+    // Also refresh devices if that tab is active
+    const devicesTab = document.getElementById('devices-tab');
+    if (devicesTab && devicesTab.classList.contains('active')) {
+        loadDevices();
+    }
 }, 60000); // Refresh every minute

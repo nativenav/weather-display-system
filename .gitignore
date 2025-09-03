@@ -23,3 +23,7 @@ __pycache__/
 .env
 .env.*
 
+# Firmware secrets
+firmware/*/secrets.h
+**/secrets.h
+

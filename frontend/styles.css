@@ -169,6 +169,244 @@ select:focus {
     transform: none;
 }
 
+/* Tabs */
+.tabs-nav {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 1rem;
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+}
+
+.tab-button {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tab-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.tab-button.active {
+    background: white;
+    color: #667eea;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Section headers */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.section-header p {
+    color: #6b7280;
+    margin: 0;
+    flex: 1;
+    min-width: 300px;
+}
+
+/* Actions */
+.actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Devices */
+.devices-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.device-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1.5rem;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.device-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.device-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.device-name {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.25rem;
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.device-name:hover {
+    background: #e5e7eb;
+}
+
+.device-name.editing {
+    background: white;
+    border: 2px solid #667eea;
+    outline: none;
+}
+
+.device-mac {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.9rem;
+    color: #6b7280;
+    background: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.device-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-dot.online {
+    background: #10b981;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.status-dot.offline {
+    background: #ef4444;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.device-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+}
+
+.device-info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.device-info-label {
+    font-weight: 600;
+    color: #4b5563;
+    margin-bottom: 0.25rem;
+}
+
+.device-info-value {
+    color: #1f2937;
+}
+
+.device-controls {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.station-select {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background: white;
+    min-width: 160px;
+    transition: border-color 0.2s;
+}
+
+.station-select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.btn-sm {
+    padding: 8px 12px;
+    font-size: 0.9rem;
+}
+
+.btn-identify {
+    background: #8b5cf6;
+    color: white;
+    position: relative;
+}
+
+.btn-identify:hover {
+    background: #7c3aed;
+}
+
+.btn-identify.pulsing {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(139, 92, 246, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(139, 92, 246, 0);
+    }
+}
+
+.device-last-seen {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+}
+
 /* Stations */
 .stations-grid {
     display: grid;
@@ -191,7 +429,7 @@ select:focus {
 
 .station-header {
     display: flex;
-    justify-content: between;
+    justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 1rem;
 }
