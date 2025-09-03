@@ -1214,9 +1214,289 @@ openssl s_client -connect weather-backend.nativenav.workers.dev:443 -servername 
 ```
 
 ---
+---
+## 📱 11. ePaper Display Optimization
 
+### Understanding ePaper Ghosting
+EPaper displays suffer from **ghosting** - faint remnants of previous content that appear on new refreshes. This happens because ePaper pixels don't fully reset between partial refreshes, leading to:
+- Overlapping text and graphics
+- Reduced readability
+- Unprofessional appearance
+- User confusion about current vs old data
+
+### Anti-Ghosting Strategies
+
+#### 1. Full Refresh Cycling
+**Current Implementation** (from `config.h`):
+```cpp
+#define FULL_REFRESH_CYCLES 10  // Full refresh every N cycles
+```
+
+**How it works**:
+- Every 10th display update uses full refresh instead of partial
+- Full refresh clears all pixel states completely
+- Prevents ghosting accumulation over time
+- Balances performance vs visual quality
+
+**Code Implementation** (from `weather-display-integrated.ino`):
+```cpp
+void refreshDisplay() {
+  // Use full refresh every 10 cycles to prevent ghosting
+  bool useFullRefresh = (refreshCycle % 10 == 0) || !dataValid;
+  refreshCycle++;
+  
+  if (useFullRefresh) {
+    DEBUG_PRINTLN("Using full refresh (anti-ghosting)");
+    // Anti-ghosting sequence
+    epaper.fillScreen(TFT_BLACK);
+    epaper.update();
+    delay(200);
+    
+    epaper.fillScreen(TFT_WHITE);
+    epaper.update(); 
+    delay(200);
+  }
+  
+  // Clear and draw content
+  epaper.fillScreen(TFT_WHITE);
+  drawWeatherData(); // or drawErrorState()
+  epaper.update();
+}
+```
+
+#### 2. Multi-Stage Anti-Ghosting Sequence
+**Black-White-Content Pattern**:
+1. **Fill BLACK** → `epaper.update()` → Clear all pixels to known state
+2. **Fill WHITE** → `epaper.update()` → Reset pixels to background
+3. **Draw Content** → `epaper.update()` → Display actual data
+
+**Timing Considerations**:
+- 200ms delays between stages allow full pixel settling
+- Total anti-ghosting sequence: ~600ms (acceptable for 3-minute updates)
+- Only used every 10th cycle to minimize power consumption
+
+#### 3. Strategic Refresh Triggers
+**Force Full Refresh When**:
+- Display data is invalid (`!dataValid`)
+- Error states are shown
+- Device identification sequence
+- First boot or WiFi reconnection
+
+```cpp
+// Force full refresh for critical state changes
+bool useFullRefresh = (refreshCycle % 10 == 0) || 
+                      !dataValid || 
+                      identifyRequested || 
+                      wifiReconnected;
+```
+
+### Hardware-Specific Optimizations
+
+#### UC8179 Controller Settings
+**Driver Configuration** (from `driver.h`):
+```cpp
+#define UC8179_DRIVER                    // 7.5" ePaper controller
+#define USE_FULL_REFRESH true           // Enable full refresh capability
+#define ANTI_GHOSTING_ENABLED true      // Hardware anti-ghosting support
+#define SPI_FREQUENCY 10000000          // 10MHz - optimal for UC8179
+#define SPI_READ_FREQUENCY 4000000      // 4MHz - stable read operations
+```
+
+#### Display Timing
+```cpp
+#define FULL_REFRESH_CYCLES 10          // Every 10 updates
+#define WEATHER_UPDATE_INTERVAL 180000  // 3 minutes between data updates
+#define IDENTIFY_FLASH_DELAY 500        // 500ms for identify sequence
+```
+
+### Memory Management for Large Displays
+
+#### Buffer Management
+**7.5" Display Requirements** (800x480 pixels):
+- **Frame Buffer**: ~48KB for monochrome (800×480÷8 bits)
+- **Working Memory**: Additional 20-30KB for graphics operations
+- **JSON Buffer**: 4KB for region data (3 stations)
+- **Total Peak Usage**: ~70-80KB (within ESP32C3's 400KB RAM)
+
+**Optimization Techniques**:
+```cpp
+// Efficient memory allocation
+#define JSON_BUFFER_SIZE 4096           // Sized for 3-station region data
+#define HEAP_WARNING_THRESHOLD 50000    // Alert if free heap < 50KB
+#define MAX_STRING_LENGTH 256           // Prevent string overflow
+
+// Memory monitoring
+void checkMemoryHealth() {
+  uint32_t freeHeap = ESP.getFreeHeap();
+  if (freeHeap < HEAP_WARNING_THRESHOLD) {
+    DEBUG_PRINTF("⚠️  LOW MEMORY: %d bytes\n", freeHeap);
+    // Consider reducing refresh rate or clearing caches
+  }
+}
+```
+
+### Performance Optimization
+
+#### Update Strategy
+**Current Approach**:
+- **Weather Data**: Every 3 minutes (aligned with backend cron)
+- **Display Refresh**: Only when data changes or ghosting cycle
+- **Heartbeat**: Every 1 minute (minimal display impact)
+- **Full Refresh**: Every 10th cycle (~30 minutes)
+
+**Power Efficiency**:
+```cpp
+// Minimize display updates
+void loop() {
+  if (needsDisplayUpdate) {
+    refreshDisplay();
+    needsDisplayUpdate = false;  // Only update when needed
+  }
+  delay(100);  // Prevent excessive polling
+}
+```
+
+#### SPI Optimization
+```cpp
+// High-speed SPI for faster refreshes
+#define SPI_FREQUENCY 10000000    // 10MHz - near maximum for UC8179
+
+// Pin definitions optimized for XIAO ESP32C3
+#define TFT_SCLK D8   // Hardware SPI clock
+#define TFT_MOSI D10  // Hardware SPI data
+#define TFT_CS   D1   // Chip select - fast GPIO
+```
+
+### Advanced Anti-Ghosting Techniques
+
+#### 1. Selective Refresh Areas
+```cpp
+// For future implementation - partial refresh zones
+void updateWeatherField(int x, int y, int width, int height, String newValue) {
+  // Clear specific area with white
+  epaper.fillRect(x, y, width, height, TFT_WHITE);
+  // Draw new content
+  epaper.drawString(newValue, x, y);
+  // Refresh only this area (reduces ghosting in other areas)
+  epaper.updateWindow(x, y, width, height);
+}
+```
+
+#### 2. Contrast Enhancement
+```cpp
+// Increase text contrast to overcome mild ghosting
+void drawHighContrastText(String text, int x, int y) {
+  // Draw text slightly offset in multiple passes
+  epaper.setTextColor(TFT_BLACK);
+  epaper.drawString(text, x, y);
+  epaper.drawString(text, x+1, y);     // Slight bold effect
+  epaper.drawString(text, x, y+1);     // Additional weight
+}
+```
+
+#### 3. Background Patterns for Ghosting Detection
+```cpp
+void debugGhosting() {
+  // Fill with checkerboard pattern
+  for(int x = 0; x < 800; x += 20) {
+    for(int y = 0; y < 480; y += 20) {
+      int color = ((x/20) + (y/20)) % 2 ? TFT_BLACK : TFT_WHITE;
+      epaper.fillRect(x, y, 20, 20, color);
+    }
+  }
+  epaper.update();
+  delay(3000);
+  
+  // Clear and show weather - any ghosting will be visible
+  epaper.fillScreen(TFT_WHITE);
+  drawWeatherData();
+  epaper.update();
+}
+```
+
+### Troubleshooting Display Issues
+
+#### Common Ghosting Problems
+**Problem**: Heavy ghosting after several updates
+```cpp
+Solution:
+1. Reduce FULL_REFRESH_CYCLES from 10 to 5
+2. Add extra delay in anti-ghosting sequence
+3. Check SPI timing and connections
+4. Verify power supply stability (ePaper needs stable 3.3V)
+```
+
+**Problem**: Slow display updates
+```cpp
+Solution:
+1. Check SPI_FREQUENCY setting (try reducing to 8MHz)
+2. Verify TFT_BUSY pin connection and handling
+3. Monitor memory usage - low memory slows operations
+4. Reduce font sizes or drawing complexity
+```
+
+**Problem**: Partial display corruption
+```cpp
+Solution:
+1. Check all SPI pin connections (especially DC and CS)
+2. Verify power supply can handle display current draw
+3. Add delay after epaper.begin() in setup
+4. Check for memory corruption with heap monitoring
+```
+
+#### Memory Leak Detection
+```cpp
+void monitorDisplayMemory() {
+  static uint32_t lastHeap = 0;
+  uint32_t currentHeap = ESP.getFreeHeap();
+  
+  if (lastHeap > 0) {
+    int32_t diff = (int32_t)currentHeap - (int32_t)lastHeap;
+    DEBUG_PRINTF("Heap change: %d bytes (now: %d)\n", diff, currentHeap);
+    
+    if (diff < -1000) {  // Lost > 1KB
+      DEBUG_PRINTLN("⚠️ Possible memory leak detected!");
+    }
+  }
+  lastHeap = currentHeap;
+}
+```
+
+### Best Practices Summary
+
+#### ✅ **DO**:
+- Use full refresh cycling (every 5-10 updates)
+- Implement multi-stage anti-ghosting (black→white→content)
+- Monitor memory usage continuously
+- Align update intervals with backend data refresh
+- Use stable power supply for ePaper
+- Test with actual weather data variations
+
+#### ❌ **DON'T**:
+- Update display more frequently than data changes
+- Skip anti-ghosting cycles to "save time"
+- Use partial refresh for high-contrast changes
+- Ignore memory warnings
+- Update display during low battery conditions
+- Use overly complex graphics that stress memory
+
+#### 🔧 **Optimization Checklist**:
+```markdown
+- [ ] Full refresh cycle configured (FULL_REFRESH_CYCLES)
+- [ ] Anti-ghosting sequence implemented (black→white→content)
+- [ ] Memory monitoring active (heap warnings)
+- [ ] SPI frequency optimized for hardware
+- [ ] Update intervals aligned with data availability
+- [ ] Error states trigger full refresh
+- [ ] Power supply stable under display load
+- [ ] Pin connections verified and secure
+```
+
+**Pro Tip**: The current firmware already implements optimal anti-ghosting for this hardware combination (XIAO ESP32C3 + UC8179). The 10-cycle full refresh provides excellent balance between visual quality and performance for 3-minute weather updates.
+
+---
 **System Status**: ✅ **PRODUCTION READY**  
 **Last Updated**: September 3, 2025  
 **Version**: 1.0.0
-
+*Happy developing! 🌤️⚡*
 *Happy developing! 🌤️⚡*

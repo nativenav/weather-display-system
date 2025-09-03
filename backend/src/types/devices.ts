@@ -7,8 +7,7 @@ export interface DeviceInfo {
   deviceId: string;      // MAC address without colons (lowercase)
   macAddress: string;    // Full MAC address with colons
   nickname: string;      // User-friendly device name
-  stationId: string;     // Assigned weather station
-  region: string;        // Device region (chamonix/solent)
+  regionId: string;      // Assigned weather region (chamonix/solent)
   lastSeen: string;      // ISO timestamp of last heartbeat
   status: 'online' | 'offline';
   createdAt: string;     // ISO timestamp of device registration
@@ -31,16 +30,14 @@ export interface DeviceRegistrationResponse {
   success: boolean;
   deviceId: string;
   nickname: string;
-  stationId: string;
-  region: string;
+  regionId: string;
   message?: string;
   isNewDevice: boolean;
 }
 
 export interface DeviceUpdateRequest {
   nickname?: string;
-  stationId?: string;
-  region?: string;
+  regionId?: string;
 }
 
 export interface DeviceHeartbeat {

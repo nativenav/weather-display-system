@@ -9,14 +9,14 @@ export const REGIONS: Record<string, RegionConfig> = {
   chamonix: {
     name: 'chamonix',
     displayName: 'Chamonix Valley, France',
-    stations: ['planpraz', 'prarion', 'tetedebalme'], // Alphabetical order
-    defaultStation: 'planpraz' // First alphabetically
+    stations: ['prarion', 'planpraz', 'tetedebalme'], // Display order for firmware
+    defaultStation: 'prarion' // Primary station
   },
   solent: {
     name: 'solent', 
     displayName: 'Solent, UK',
-    stations: ['brambles', 'lymington', 'seaview'], // Alphabetical order
-    defaultStation: 'brambles' // First alphabetically
+    stations: ['lymington', 'brambles', 'seaview'], // Display order for firmware
+    defaultStation: 'lymington' // Primary station
   }
 };
 

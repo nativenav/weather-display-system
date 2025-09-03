@@ -3,12 +3,12 @@ import { fetchSeaviewWeather, parseSeaviewData } from './parsers/seaview.js';
 import { fetchLymingtonWeather, parseLymingtonData } from './parsers/lymington.js';
 import { fetchPrarionWeather, parsePrarionData } from './parsers/pioupiou-legacy.js';
 import { fetchTeteDeBalmeWeather, parseTeteDeBalmeData, fetchPlanprazWeather, parsePlanprazData } from './parsers/windbird-legacy.js';
-import { WeatherResponse, WeatherData, Env } from './types/weather.js';
+import { WeatherResponse, RegionWeatherResponse, WeatherData, Env } from './types/weather.js';
 import { formatDisplayLines, createCacheKey, generateContentHash } from './utils/helpers.js';
 
 // Device management imports
 import { DeviceInfo, DeviceRegistrationResponse, DeviceNotFoundError, InvalidMacAddressError } from './types/devices.js';
-import { getAllRegions, getDefaultStation, DEFAULT_REGION } from './config/regions.js';
+import { getAllRegions, getRegion, getDefaultStation, DEFAULT_REGION, getRegionForStation } from './config/regions.js';
 import { 
   normalizeDeviceId, 
   formatMacAddress, 
@@ -58,7 +58,9 @@ export default {
     
     try {
       // Route API requests
-      if (path.startsWith('/api/v1/weather/')) {
+      if (path.startsWith('/api/v1/weather/region/')) {
+        return await handleRegionWeatherRequest(request, env, ctx, corsHeaders);
+      } else if (path.startsWith('/api/v1/weather/')) {
         return await handleWeatherRequest(request, env, ctx, corsHeaders);
       } else if (path === '/api/v1/stations') {
         return await handleStationsRequest(corsHeaders);
@@ -208,13 +210,12 @@ async function handleWeatherRequest(
           success: true,
           deviceId: device.deviceId,
           nickname: device.nickname,
-          stationId: device.stationId,
-          region: device.region,
+          regionId: device.regionId,
           message: 'Device auto-registered successfully',
           isNewDevice: true
         };
         
-        console.log(`[INFO] New device auto-registered: ${deviceId} -> ${device.stationId}`);
+        console.log(`[INFO] New device auto-registered: ${deviceId} -> ${device.regionId}`);
       } else {
         // Update existing device activity
         const deviceInfo = extractDeviceInfo(request);
@@ -230,16 +231,13 @@ async function handleWeatherRequest(
         console.log(`[INFO] Device activity updated: ${deviceId}`);
       }
       
-      // Use the device's assigned station instead of the requested one
-      // This allows the device to get data for its assigned station
-      // regardless of what station it requested
-      if (device.stationId !== stationId) {
-        console.log(`[INFO] Redirecting device ${deviceId} from ${stationId} to assigned station ${device.stationId}`);
-      }
+      // Note: Since we're now using regions, individual station requests are deprecated
+      // This handler maintains backward compatibility but devices should use region endpoints
+      console.log(`[INFO] Device ${deviceId} assigned to region ${device.regionId} requesting individual station ${stationId}`);
     }
     
-    // Determine which station to get data for
-    const targetStationId = device?.stationId || stationId;
+    // Use the requested station (maintaining backward compatibility)
+    const targetStationId = stationId;
     
     // Try to get cached data first
     const cacheKey = createCacheKey(targetStationId);
@@ -261,6 +259,9 @@ async function handleWeatherRequest(
     
     // Return display format for ESP32C3 clients
     if (format === 'display') {
+      // Detect region from station ID for proper unit conversion
+      const region = getRegionForStation(targetStationId);
+      
       const displayLines = formatDisplayLines({
         stationName: weatherData.stationId,
         windSpeed: weatherData.data.wind.avg,
@@ -269,7 +270,7 @@ async function handleWeatherRequest(
         temperature: weatherData.data.temperature?.air,
         pressure: weatherData.data.pressure?.value,
         timestamp: weatherData.timestamp
-      });
+      }, region || undefined);
       
       return new Response(displayLines.join('\n'), {
         headers: {
@@ -392,6 +393,213 @@ async function handleStationsRequest(corsHeaders: Record<string, string>): Promi
       ...corsHeaders
     }
   });
+}
+
+/**
+ * Handle region weather API requests: GET /api/v1/weather/region/{region}
+ * Returns data for all 3 stations in the region in display order
+ */
+async function handleRegionWeatherRequest(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  corsHeaders: Record<string, string>
+): Promise<Response> {
+  const url = new URL(request.url);
+  const pathParts = url.pathname.split('/');
+  const regionId = pathParts[5]; // /api/v1/weather/region/{region}
+  const macParam = url.searchParams.get('mac'); // ?mac=deviceid for auto-registration
+  
+  if (!regionId) {
+    return new Response(JSON.stringify({
+      error: 'Bad Request',
+      message: 'Region ID is required'
+    }), {
+      status: 400,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  }
+  
+  // Check if region is supported
+  const regionConfig = getRegion(regionId);
+  if (!regionConfig) {
+    const availableRegions = getAllRegions().map(r => r.name);
+    return new Response(JSON.stringify({
+      error: 'Not Found',
+      message: `Region '${regionId}' not found. Available: ${availableRegions.join(', ')}`
+    }), {
+      status: 404,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  }
+  
+  try {
+    // Handle device auto-registration if MAC parameter provided
+    let deviceRegistrationResponse: DeviceRegistrationResponse | null = null;
+    let device: DeviceInfo | null = null;
+    
+    if (macParam) {
+      const deviceId = normalizeDeviceId(macParam);
+      
+      // Check if device exists
+      device = await getDevice(deviceId, env);
+      
+      if (!device) {
+        // Auto-register new device
+        console.log(`[INFO] Auto-registering new device: ${deviceId}`);
+        
+        const deviceInfo = extractDeviceInfo(request);
+        const macAddress = formatMacAddress(deviceId);
+        
+        device = createNewDevice(
+          deviceId,
+          macAddress,
+          regionId,
+          undefined, // Auto-generated nickname
+          deviceInfo.userAgent,
+          deviceInfo.firmware,
+          deviceInfo.ipAddress
+        );
+        
+        await saveDevice(device, env);
+        
+        deviceRegistrationResponse = {
+          success: true,
+          deviceId: device.deviceId,
+          nickname: device.nickname,
+          regionId: device.regionId,
+          message: 'Device auto-registered successfully',
+          isNewDevice: true
+        };
+        
+        console.log(`[INFO] New device auto-registered: ${deviceId} -> ${device.regionId}`);
+      } else {
+        // Update existing device activity
+        const deviceInfo = extractDeviceInfo(request);
+        const updatedDevice = updateDeviceActivity(
+          device,
+          deviceInfo.ipAddress,
+          deviceInfo.userAgent
+        );
+        
+        await saveDevice(updatedDevice, env);
+        device = updatedDevice;
+        
+        console.log(`[INFO] Device activity updated: ${deviceId}`);
+      }
+    }
+    
+    // Determine which region to get data for (use device's assigned region if available)
+    const targetRegionId = device?.regionId || regionId;
+    const targetRegionConfig = getRegion(targetRegionId);
+    
+    if (!targetRegionConfig) {
+      throw new Error(`Invalid target region: ${targetRegionId}`);
+    }
+    
+    // Collect data from all stations in the region (in correct display order)
+    const stationPromises = targetRegionConfig.stations.map(async (stationId) => {
+      // Try cache first
+      const cacheKey = createCacheKey(stationId);
+      const cachedData = await env.WEATHER_CACHE.get(cacheKey, { type: 'json' });
+      
+      if (cachedData) {
+        console.log(`[INFO] Serving cached data for ${stationId}`);
+        return cachedData as WeatherResponse;
+      } else {
+        console.log(`[INFO] Fetching fresh data for ${stationId}`);
+        const freshData = await collectStationData(stationId, env);
+        if (!freshData) {
+          console.warn(`[WARN] No data available for ${stationId}, using placeholder`);
+          // Return placeholder data to maintain 3-station structure
+          return {
+            schema: "weather.v1" as const,
+            stationId,
+            timestamp: new Date().toISOString(),
+            data: {
+              wind: {
+                avg: 0,
+                gust: 0,
+                direction: 0,
+                unit: "mps" as const
+              }
+            },
+            ttl: 300,
+            error: 'No data available'
+          };
+        }
+        return freshData;
+      }
+    });
+    
+    // Wait for all station data to be collected
+    const stationData = await Promise.all(stationPromises);
+    
+    // Create region response
+    const regionResponse: RegionWeatherResponse = {
+      schema: "weather-region.v1",
+      regionId: targetRegionId,
+      regionName: targetRegionConfig.displayName,
+      timestamp: new Date().toISOString(),
+      stations: stationData,
+      ttl: 300 // 5 minutes
+    };
+    
+    // For device requests, enhance the response with device-specific data
+    if (device) {
+      const deviceResponse = {
+        ...regionResponse,
+        // Add device-specific fields
+        identify: device.identifyFlag || false,
+        deviceRegistration: deviceRegistrationResponse
+      };
+      
+      // Clear the identify flag after sending it
+      if (device.identifyFlag) {
+        await clearDeviceIdentifyFlag(device.deviceId, env);
+      }
+      
+      // Return device-enhanced response
+      const statusCode = deviceRegistrationResponse ? 201 : 200;
+      return new Response(JSON.stringify(deviceResponse, null, 2), {
+        status: statusCode,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, max-age=300', // 5 minutes
+          ...corsHeaders
+        }
+      });
+    }
+    
+    // Return standard region response
+    return new Response(JSON.stringify(regionResponse, null, 2), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=300', // 5 minutes
+        ...corsHeaders
+      }
+    });
+    
+  } catch (error) {
+    console.error(`[ERROR] Region weather request failed for ${regionId}:`, error);
+    return new Response(JSON.stringify({
+      error: 'Service Unavailable',
+      message: `Unable to fetch weather data for region ${regionId}`,
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }), {
+      status: 503,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  }
 }
 
 /**
@@ -902,12 +1110,11 @@ async function handleUpdateDeviceRequest(
       });
     }
     
-    // Update device fields
+    // Update device fields (using regionId for new region-based system)
     const updatedDevice: DeviceInfo = {
       ...device,
       nickname: body.nickname || device.nickname,
-      stationId: body.stationId || device.stationId,
-      region: body.region || device.region
+      regionId: body.regionId || device.regionId
     };
     
     await saveDevice(updatedDevice, env);

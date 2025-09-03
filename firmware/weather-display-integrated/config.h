@@ -18,9 +18,10 @@
 #define WIFI_CHECK_INTERVAL 30000         // 30 seconds (connection monitoring)
 
 // Display Settings
-#define FULL_REFRESH_CYCLES 10            // Full refresh every N cycles
+#define FULL_REFRESH_CYCLES 5             // Full refresh every N cycles (reduced for better anti-ghosting)
 #define IDENTIFY_FLASH_COUNT 3            // Number of flashes for identify
 #define IDENTIFY_FLASH_DELAY 500          // Delay between identify flashes (ms)
+#define ANTI_GHOST_DELAY 300              // Delay between anti-ghosting stages (ms)
 
 // Default Station Settings
 #define DEFAULT_STATION_CHAMONIX "prarion"

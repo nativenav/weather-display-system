@@ -43,6 +43,16 @@ export interface WeatherResponse {
   ttl: number;
 }
 
+// Multi-station region response for ESP32C3 display
+export interface RegionWeatherResponse {
+  schema: "weather-region.v1";
+  regionId: string;
+  regionName: string;
+  timestamp: string;
+  stations: WeatherResponse[];
+  ttl: number;
+}
+
 // Station configuration
 export interface StationConfig {
   id: string;

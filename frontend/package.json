@@ -5,7 +5,7 @@
   "main": "index.html",
   "scripts": {
     "serve": "npx http-server . -p 8080 -c-1",
-    "deploy": "wrangler pages deploy . --project-name=weather-management"
+    "deploy": "wrangler pages deploy . --project-name=weather-display-blue"
   },
   "keywords": ["weather", "management", "frontend"],
   "author": "nives",

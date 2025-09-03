@@ -52,15 +52,20 @@ unsigned long lastWiFiCheck = 0;
 bool wifiConnected = false;
 int wifiReconnectAttempts = 0;
 
-// Weather data
-String currentStationId = "";
-String stationName = "";
-float temperature = 0.0;
-float windSpeed = 0.0;
-float windGust = 0.0;
-int windDirection = 0;
-String lastUpdateTime = "";
+// Weather data - now supports 3 stations per region
+String currentRegionId = "";
+String regionDisplayName = "";
+struct StationData {
+  String stationName;
+  float temperature;
+  float windSpeed;
+  float windGust;
+  int windDirection;
+  String lastUpdateTime;
+};
+StationData stations[3]; // Array for 3 stations per region
 bool dataValid = false;
+String currentDate = "";
 
 // Display state
 bool needsDisplayUpdate = true;
@@ -212,20 +217,37 @@ void refreshDisplay() {
 #ifdef EPAPER_ENABLE
   DEBUG_PRINTLN("Refreshing ePaper display...");
   
-  // Use full refresh every 10 cycles to prevent ghosting
-  bool useFullRefresh = (refreshCycle % 10 == 0) || !dataValid;
+  // Use full refresh every 5 cycles to prevent ghosting (improved from 10)
+  bool useFullRefresh = (refreshCycle % FULL_REFRESH_CYCLES == 0) || 
+                        !dataValid || 
+                        identifyRequested;
   refreshCycle++;
   
   if (useFullRefresh) {
-    DEBUG_PRINTLN("Using full refresh (anti-ghosting)");
-    // Anti-ghosting sequence
+    DEBUG_PRINTLN("Using enhanced anti-ghosting sequence");
+    
+    // Enhanced 4-stage anti-ghosting sequence for better results
+    // Stage 1: Fill with BLACK and refresh
     epaper.fillScreen(TFT_BLACK);
     epaper.update();
-    delay(200);
+    delay(ANTI_GHOST_DELAY);  // Configurable delay
     
+    // Stage 2: Fill with WHITE and refresh  
     epaper.fillScreen(TFT_WHITE);
-    epaper.update(); 
-    delay(200);
+    epaper.update();
+    delay(ANTI_GHOST_DELAY);
+    
+    // Stage 3: Fill with BLACK again (extra clearing)
+    epaper.fillScreen(TFT_BLACK);
+    epaper.update();
+    delay(ANTI_GHOST_DELAY / 2);  // Shorter delay for intermediate step
+    
+    // Stage 4: Final WHITE background
+    epaper.fillScreen(TFT_WHITE);
+    epaper.update();
+    delay(ANTI_GHOST_DELAY);
+    
+    DEBUG_PRINTLN("Anti-ghosting sequence complete");
   }
   
   // Clear and draw content
@@ -242,38 +264,78 @@ void refreshDisplay() {
   
   epaper.update();
   
-  DEBUG_PRINTLN("Display refresh complete");
+  DEBUG_PRINTF("Display refresh complete (cycle %d, full refresh: %s)\n", 
+               refreshCycle, useFullRefresh ? "yes" : "no");
 #endif
 }
 
 void drawWeatherData() {
 #ifdef EPAPER_ENABLE
-  // Station name header
-  epaper.setTextSize(2);
+  // Header bar with region and date (800px width display)
+  // Increase header font by 30% (size 2 -> 2.6, approximate with size 3)
+  epaper.setTextSize(3);
   epaper.setTextColor(TFT_BLACK);
-  epaper.drawString(stationName, 10, 10);
   
-  // Temperature (large display)
-  epaper.setTextSize(4);
-  String tempStr = String(temperature, 1) + "°C";
-  epaper.drawString(tempStr, 10, 60);
+  // Region name on left
+  epaper.drawString(regionDisplayName, 10, 10);
   
-  // Wind information
-  epaper.setTextSize(2);
-  String windStr = "Wind: " + String(windSpeed, 1) + " m/s";
-  epaper.drawString(windStr, 10, 140);
+  // Date on right (approximate positioning for 800px width)
+  epaper.drawString(currentDate, 500, 10);
   
-  if (windGust > windSpeed) {
-    String gustStr = "Gust: " + String(windGust, 1) + " m/s";
-    epaper.drawString(gustStr, 10, 170);
+  // Draw horizontal line under header
+  epaper.drawLine(10, 50, 790, 50, TFT_BLACK);
+  
+  // Three columns layout (260px each + margins)
+  int colWidth = 260;
+  int colStartX[3] = {10, 275, 540}; // Column start positions
+  
+  for (int i = 0; i < 3; i++) {
+    if (i >= 3 || stations[i].stationName.isEmpty()) continue;
+    
+    int x = colStartX[i];
+    int y = 70; // Start below header
+    
+    // Station name - increase by 30% (size 2 -> 2.6, approximate with size 3)
+    epaper.setTextSize(3);
+    epaper.drawString(stations[i].stationName, x, y);
+    y += 45;
+    
+    // Double size font for data fields (size 1 -> size 2)
+    epaper.setTextSize(2);
+    
+    // Wind direction (no decimals) with label
+    epaper.drawString("WIND DIR: " + String(stations[i].windDirection) + " deg", x, y);
+    y += 42; // Increased from 35 to 42 (20% more spacing)
+    
+    // Wind speed (1 decimal) with label
+    epaper.drawString("WIND SPD: " + String(stations[i].windSpeed, 1) + " m/s", x, y);
+    y += 42; // Increased from 35 to 42 (20% more spacing)
+    
+    // Wind gust (1 decimal) with label
+    epaper.drawString("WIND GUST: " + String(stations[i].windGust, 1) + " m/s", x, y);
+    y += 42; // Increased from 35 to 42 (20% more spacing)
+    
+    // Temperature (1 decimal, using "deg C") with label - show dashes if not available
+    String tempDisplay;
+    if (stations[i].temperature == 0.0 || isnan(stations[i].temperature)) {
+      tempDisplay = "AIR TEMP: -- deg C";
+    } else {
+      tempDisplay = "AIR TEMP: " + String(stations[i].temperature, 1) + " deg C";
+    }
+    epaper.drawString(tempDisplay, x, y);
+    y += 42; // Increased from 35 to 42 (20% more spacing)
+    
+    // Last update time with label
+    epaper.drawString("UPDATED: " + stations[i].lastUpdateTime, x, y);
+    
+    // Draw vertical separator line (except after last column)
+    if (i < 2) {
+      epaper.drawLine(x + colWidth, 60, x + colWidth, 380, TFT_BLACK);
+    }
   }
   
-  String dirStr = "Direction: " + String(windDirection) + "°";
-  epaper.drawString(dirStr, 10, 200);
-  
-  // Last update time
-  epaper.setTextSize(1);
-  epaper.drawString("Updated: " + lastUpdateTime, 10, 250);
+  // Draw horizontal line above footer
+  epaper.drawLine(10, 400, 790, 400, TFT_BLACK);
 #endif
 }
 
@@ -301,19 +363,23 @@ void drawStatusFooter() {
 #ifdef EPAPER_ENABLE
   epaper.setTextSize(1);
   
-  // WiFi status
-  String wifiStatus = wifiConnected ? "WiFi: Connected" : "WiFi: Disconnected";
-  epaper.drawString(wifiStatus, 10, 450);
+  // WiFi signal strength in dBm
+  String wifiSignal = wifiConnected ? ("WiFi:" + String(WiFi.RSSI()) + "dBm") : "WiFi:?";
   
-  // Registration status
-  String regStatus = isRegistered ? "Registered" : "Not Registered";
-  epaper.drawString(regStatus, 200, 450);
+  // Memory as percentage (total heap ~300KB for ESP32C3)
+  int freeHeap = ESP.getFreeHeap();
+  int totalHeap = 300000; // Approximate total heap for ESP32C3
+  int memoryPercent = (freeHeap * 100) / totalHeap;
+  String memoryStatus = "Mem:" + String(memoryPercent) + "%";
   
-  // Device info
-  epaper.drawString("ID: " + deviceId.substring(0, 8), 400, 450);
+  // Device ID (first 6 characters)
+  String shortId = "ID:" + deviceId.substring(0, 6);
   
-  // Current time
-  epaper.drawString("Heap: " + String(ESP.getFreeHeap()), 600, 450);
+  // Footer layout: WiFi - Memory - ID - Version (removed current time)
+  epaper.drawString(wifiSignal, 10, 430);
+  epaper.drawString(memoryStatus, 150, 430);
+  epaper.drawString(shortId, 250, 430);
+  epaper.drawString("v1.0", 350, 430);
 #endif
 }
 
@@ -443,8 +509,8 @@ void updateWeatherData() {
   DEBUG_PRINTLN("Updating weather data...");
   
   HTTPClient http;
-  String url = String(BACKEND_URL) + "/api/v1/weather/" + currentStationId + 
-               "?format=json&mac=" + deviceId;
+  String url = String(BACKEND_URL) + "/api/v1/weather/region/" + currentRegionId + 
+               "?mac=" + deviceId;
   
   http.begin(url);
   http.addHeader("User-Agent", "WeatherDisplay/1.0 ESP32C3-" + deviceId);
@@ -454,7 +520,7 @@ void updateWeatherData() {
   
   if (httpResponseCode == 200) {
     String payload = http.getString();
-    if (parseWeatherResponse(payload)) {
+    if (parseRegionWeatherResponse(payload)) {
       dataValid = true;
       lastError = "";
       DEBUG_PRINTLN("Weather data updated successfully");
@@ -480,6 +546,83 @@ void updateWeatherData() {
   lastWeatherUpdate = millis();
 }
 
+// New region weather response parser for 3-station data
+bool parseRegionWeatherResponse(const String& jsonString) {
+  DynamicJsonDocument doc(4096); // Larger buffer for 3 stations
+  DeserializationError error = deserializeJson(doc, jsonString);
+  
+  if (error) {
+    DEBUG_PRINTF("JSON parse error: %s\n", error.c_str());
+    return false;
+  }
+  
+  // Extract region info
+  currentRegionId = doc["regionId"].as<String>();
+  regionDisplayName = doc["regionName"].as<String>();
+  currentDate = doc["timestamp"].as<String>();
+  
+  // Parse current date to "DD MMM YYYY" format
+  if (currentDate.length() >= 10) {
+    String year = currentDate.substring(0, 4);
+    String month = currentDate.substring(5, 7);
+    String day = currentDate.substring(8, 10);
+    
+    String monthNames[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+    int monthNum = month.toInt() - 1;
+    if (monthNum >= 0 && monthNum < 12) {
+      currentDate = day + " " + monthNames[monthNum] + " " + year;
+    }
+  }
+  
+  // Parse stations array (should be 3 stations)
+  JsonArray stationsArray = doc["stations"];
+  int stationCount = min((int)stationsArray.size(), 3);
+  
+  for (int i = 0; i < stationCount; i++) {
+    JsonObject station = stationsArray[i];
+    
+    stations[i].stationName = station["stationId"].as<String>();
+    
+    // Clean up station names for display
+    if (stations[i].stationName == "prarion") stations[i].stationName = "Prarion";
+    else if (stations[i].stationName == "planpraz") stations[i].stationName = "Planpraz";
+    else if (stations[i].stationName == "tetedebalme") stations[i].stationName = "Tête de Balme";
+    else if (stations[i].stationName == "brambles") stations[i].stationName = "Brambles";
+    else if (stations[i].stationName == "seaview") stations[i].stationName = "Seaview";
+    else if (stations[i].stationName == "lymington") stations[i].stationName = "Lymington";
+    
+    // Extract weather data with proper null handling
+    // Check if temperature data exists and is valid
+    if (station["data"]["temperature"]["air"].isNull() || 
+        !station["data"]["temperature"]["air"].is<float>()) {
+      stations[i].temperature = NAN; // Use NAN to indicate missing data
+    } else {
+      stations[i].temperature = station["data"]["temperature"]["air"].as<float>();
+    }
+    
+    stations[i].windSpeed = station["data"]["wind"]["avg"].as<float>();
+    stations[i].windGust = station["data"]["wind"]["gust"].as<float>();
+    stations[i].windDirection = station["data"]["wind"]["direction"].as<int>();
+    
+    // Format timestamp to time only (HH:MM UTC)
+    String timestamp = station["timestamp"].as<String>();
+    if (timestamp.length() >= 16) {
+      stations[i].lastUpdateTime = timestamp.substring(11, 16) + " UTC";
+    } else {
+      stations[i].lastUpdateTime = "--:-- UTC";
+    }
+  }
+  
+  // Check for identify request
+  if (doc["identify"].as<bool>()) {
+    identifyRequested = true;
+  }
+  
+  return true;
+}
+
+// Legacy single station parser (kept for compatibility)
 bool parseWeatherResponse(const String& jsonString) {
   DynamicJsonDocument doc(2048);
   DeserializationError error = deserializeJson(doc, jsonString);
@@ -489,26 +632,13 @@ bool parseWeatherResponse(const String& jsonString) {
     return false;
   }
   
-  // Extract weather data
-  stationName = doc["stationId"].as<String>();
-  
-  if (doc["data"]["temperature"]["air"]) {
-    temperature = doc["data"]["temperature"]["air"];
-  }
-  
-  if (doc["data"]["wind"]["avg"]) {
-    windSpeed = doc["data"]["wind"]["avg"];
-  }
-  
-  if (doc["data"]["wind"]["gust"]) {
-    windGust = doc["data"]["wind"]["gust"];  
-  }
-  
-  if (doc["data"]["wind"]["direction"]) {
-    windDirection = doc["data"]["wind"]["direction"];
-  }
-  
-  lastUpdateTime = doc["timestamp"].as<String>();
+  // For backward compatibility - convert to first station
+  stations[0].stationName = doc["stationId"].as<String>();
+  stations[0].temperature = doc["data"]["temperature"]["air"].as<float>();
+  stations[0].windSpeed = doc["data"]["wind"]["avg"].as<float>();
+  stations[0].windGust = doc["data"]["wind"]["gust"].as<float>();
+  stations[0].windDirection = doc["data"]["wind"]["direction"].as<int>();
+  stations[0].lastUpdateTime = doc["timestamp"].as<String>();
   
   // Check for identify request
   if (doc["identify"].as<bool>()) {
@@ -526,12 +656,24 @@ void handleNewDeviceResponse(const String& jsonString) {
   
   if (!error) {
     isRegistered = true;
-    currentStationId = doc["stationId"].as<String>();
+    
+    // For region-based system, extract regionId from device registration
+    if (doc["regionId"]) {
+      currentRegionId = doc["regionId"].as<String>();
+    } else if (doc["stationId"]) {
+      // Legacy support - determine region from station
+      String stationId = doc["stationId"].as<String>();
+      if (stationId == "prarion" || stationId == "planpraz" || stationId == "tetedebalme") {
+        currentRegionId = "chamonix";
+      } else {
+        currentRegionId = "solent";
+      }
+    }
     
     // Save settings
     saveSettings();
     
-    DEBUG_PRINTF("Device registered! Assigned station: %s\n", currentStationId.c_str());
+    DEBUG_PRINTF("Device registered! Assigned region: %s\n", currentRegionId.c_str());
     
     // Trigger identify sequence for new device
     identifyRequested = true;
@@ -573,18 +715,27 @@ void loadSettings() {
   DEBUG_PRINTLN("Loading settings from flash...");
   
   isRegistered = preferences.getBool("registered", false);
-  currentStationId = preferences.getString("stationId", "prarion"); // Default
+  currentRegionId = preferences.getString("regionId", DEFAULT_REGION); // Use config default
   
-  DEBUG_PRINTF("Loaded - Registered: %s, Station: %s\n", 
+  // Set default region display name if not registered yet
+  if (!isRegistered) {
+    if (currentRegionId == "chamonix") {
+      regionDisplayName = "Chamonix Valley";
+    } else {
+      regionDisplayName = "Solent Marine";
+    }
+  }
+  
+  DEBUG_PRINTF("Loaded - Registered: %s, Region: %s\n", 
                isRegistered ? "true" : "false", 
-               currentStationId.c_str());
+               currentRegionId.c_str());
 }
 
 void saveSettings() {
   DEBUG_PRINTLN("Saving settings to flash...");
   
   preferences.putBool("registered", isRegistered);
-  preferences.putString("stationId", currentStationId);
+  preferences.putString("regionId", currentRegionId);
   
   DEBUG_PRINTLN("Settings saved");
 }

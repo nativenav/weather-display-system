@@ -155,6 +155,31 @@ export function normalizeWindDirection(degrees: number): number {
 }
 
 /**
+ * Convert wind speed to region-appropriate units
+ */
+export function convertWindSpeedForRegion(speedMps: number, region: string): { value: number, unit: string } {
+  if (region === 'solent') {
+    // Solent marine stations: convert to knots
+    return {
+      value: parseFloat((speedMps * 1.94384).toFixed(1)),
+      unit: 'kt'
+    };
+  } else if (region === 'chamonix') {
+    // Chamonix alpine stations: convert to km/h
+    return {
+      value: parseFloat((speedMps * 3.6).toFixed(1)),
+      unit: 'km/h'
+    };
+  } else {
+    // Fallback to m/s for unknown regions
+    return {
+      value: parseFloat(speedMps.toFixed(1)),
+      unit: 'm/s'
+    };
+  }
+}
+
+/**
  * Format display strings for ePaper (800x480 display)
  */
 export function formatDisplayLines(data: {
@@ -165,20 +190,20 @@ export function formatDisplayLines(data: {
   temperature?: number;
   pressure?: number;
   timestamp: string;
-}): string[] {
+}, region?: string): string[] {
   const lines: string[] = [];
   
   // Station header
   lines.push(`=== ${data.stationName.toUpperCase()} ===`);
   lines.push('');
   
-  // Wind data
-  const windSpeedKnots = meterPerSecondToKnots(data.windSpeed);
-  lines.push(`Wind: ${windSpeedKnots.toFixed(1)}kt @ ${data.windDirection}°`);
+  // Wind data with region-specific units
+  const windSpeed = convertWindSpeedForRegion(data.windSpeed, region || 'unknown');
+  lines.push(`Wind: ${windSpeed.value}${windSpeed.unit} @ ${data.windDirection}°`);
   
   if (data.windGust && data.windGust > data.windSpeed) {
-    const gustKnots = meterPerSecondToKnots(data.windGust);
-    lines.push(`Gust: ${gustKnots.toFixed(1)}kt`);
+    const windGust = convertWindSpeedForRegion(data.windGust, region || 'unknown');
+    lines.push(`Gust: ${windGust.value}${windGust.unit}`);
   }
   
   lines.push('');

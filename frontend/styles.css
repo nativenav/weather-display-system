@@ -561,11 +561,53 @@ select:focus {
 
 .device-controls {
     display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.region-selector-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.region-selector-container label {
+    font-weight: 600;
+    color: #4b5563;
+    font-size: 0.9rem;
+}
+
+.region-select {
+    padding: 8px 12px;
+    border: 2px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background: white;
+    color: #1f2937;
+    min-width: 180px;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.region-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.region-select:hover {
+    border-color: #9ca3af;
+}
+
+.device-actions {
+    display: flex;
     gap: 0.75rem;
     flex-wrap: wrap;
     align-items: center;
 }
 
+/* Legacy station select - deprecated but kept for compatibility */
 .station-select {
     padding: 8px 12px;
     border: 1px solid #d1d5db;
