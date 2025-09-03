@@ -801,6 +801,78 @@ input:checked + .slider:before {
     gap: 1rem;
 }
 
+.controls-left {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.unit-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.unit-selector label {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.unit-selector select {
+    padding: 0.5rem 0.75rem;
+    border: 2px solid var(--border-color);
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+    background: var(--surface-color);
+    color: var(--text-primary);
+    min-width: 80px;
+    transition: all 0.3s;
+}
+
+.unit-selector select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+/* Regional grouping */
+.region-group {
+    margin-bottom: 2.5rem;
+}
+
+.region-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 1rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.region-header.chamonix {
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+}
+
+.region-header.solent {
+    background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+}
+
+.region-stations {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
 .timestamp {
     color: #6b7280;
     font-size: 0.9rem;

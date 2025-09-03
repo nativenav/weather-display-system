@@ -31,7 +31,17 @@
                 <section class="card">
                     <h2>📊 Latest Weather Data</h2>
                     <div class="data-controls">
-                        <button id="refresh-data" class="btn btn-secondary">🔄 Refresh Data</button>
+                        <div class="controls-left">
+                            <button id="refresh-data" class="btn btn-secondary">🔄 Refresh Data</button>
+                            <div class="unit-selector">
+                                <label for="wind-unit-select">Wind Speed Unit:</label>
+                                <select id="wind-unit-select">
+                                    <option value="ms">m/s</option>
+                                    <option value="kts">knots</option>
+                                    <option value="kph">km/h</option>
+                                </select>
+                            </div>
+                        </div>
                         <span id="last-refresh" class="timestamp"></span>
                     </div>
                     <div id="weather-data-container">

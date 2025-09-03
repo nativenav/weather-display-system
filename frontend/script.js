@@ -43,6 +43,7 @@ function bindEventListeners() {
     
     // Weather data
     document.getElementById('refresh-data').addEventListener('click', loadWeatherData);
+    document.getElementById('wind-unit-select').addEventListener('change', loadWeatherData);
     
     // Device nickname editing - use event delegation
     document.addEventListener('blur', function(e) {
@@ -114,36 +115,74 @@ function displayStations(stations) {
         return;
     }
     
-    const stationsHTML = stations.map(station => {
-        const isEnabled = currentConfig.stations[station.id] !== false;
-        
-        return `
-            <div class="station-card">
-                <div class="station-header">
-                    <div>
-                        <div class="station-name">${station.name}</div>
-                        <div class="station-location">${station.location}</div>
-                    </div>
-                    <div class="station-status ${isEnabled ? 'enabled' : 'disabled'}">
-                        ${isEnabled ? 'Enabled' : 'Disabled'}
-                    </div>
-                </div>
-                <div class="station-description">${station.description}</div>
-                <div class="station-controls">
-                    <label class="toggle-switch">
-                        <input type="checkbox" ${isEnabled ? 'checked' : ''} 
-                               onchange="toggleStation('${station.id}', this.checked)">
-                        <span class="slider"></span>
-                    </label>
-                    <button class="btn btn-secondary" onclick="collectStationData('${station.id}')">
-                        📊 Collect Data
-                    </button>
-                </div>
+    // Group stations by region
+    const regionGroups = {
+        'Solent': [],
+        'Chamonix': []
+    };
+    
+    stations.forEach(station => {
+        if (['brambles', 'seaview', 'lymington'].includes(station.id)) {
+            regionGroups['Solent'].push(station);
+        } else if (['prarion', 'tete-de-balme', 'planpraz'].includes(station.id)) {
+            regionGroups['Chamonix'].push(station);
+        }
+    });
+    
+    let allHTML = '';
+    
+    // Render Solent stations
+    if (regionGroups['Solent'].length > 0) {
+        const solentHTML = regionGroups['Solent'].map(station => generateStationCard(station)).join('');
+        allHTML += `
+            <div class="region-group">
+                <div class="region-header solent">🌊 Solent Marine Stations</div>
+                <div class="region-stations">${solentHTML}</div>
             </div>
         `;
-    }).join('');
+    }
     
-    container.innerHTML = `<div class="stations-grid">${stationsHTML}</div>`;
+    // Render Chamonix stations
+    if (regionGroups['Chamonix'].length > 0) {
+        const chamonixHTML = regionGroups['Chamonix'].map(station => generateStationCard(station)).join('');
+        allHTML += `
+            <div class="region-group">
+                <div class="region-header chamonix">🏔️ Chamonix Alpine Stations</div>
+                <div class="region-stations">${chamonixHTML}</div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = allHTML;
+}
+
+function generateStationCard(station) {
+    const isEnabled = currentConfig.stations[station.id] !== false;
+    
+    return `
+        <div class="station-card">
+            <div class="station-header">
+                <div>
+                    <div class="station-name">${station.name}</div>
+                    <div class="station-location">${station.location}</div>
+                </div>
+                <div class="station-status ${isEnabled ? 'enabled' : 'disabled'}">
+                    ${isEnabled ? 'Enabled' : 'Disabled'}
+                </div>
+            </div>
+            <div class="station-description">${station.description}</div>
+            <div class="station-controls">
+                <label class="toggle-switch">
+                    <input type="checkbox" ${isEnabled ? 'checked' : ''} 
+                           onchange="toggleStation('${station.id}', this.checked)">
+                    <span class="slider"></span>
+                </label>
+                <button class="btn btn-secondary" onclick="collectStationData('${station.id}')">
+                    📊 Collect Data
+                </button>
+            </div>
+        </div>
+    `;
 }
 
 async function toggleStation(stationId, enabled) {
@@ -308,61 +347,153 @@ function displayWeatherData(results) {
         return;
     }
     
-    const weatherHTML = results.map(result => {
-        if (!result.success) {
-            return `
-                <div class="weather-card">
-                    <div class="weather-station">${result.station.name}</div>
-                    <div class="error">Failed to load: ${result.error}</div>
-                </div>
-            `;
+    const windUnit = document.getElementById('wind-unit-select').value;
+    
+    // Group stations by region
+    const regionGroups = {
+        'Solent': [],
+        'Chamonix': []
+    };
+    
+    results.forEach(result => {
+        const stationId = result.station.id;
+        if (['brambles', 'seaview', 'lymington'].includes(stationId)) {
+            regionGroups['Solent'].push(result);
+        } else if (['prarion', 'tete-de-balme', 'planpraz'].includes(stationId)) {
+            regionGroups['Chamonix'].push(result);
         }
-        
-        const { station, data } = result;
-        const wind = data.data.wind || {};
-        const temp = data.data.temperature || {};
-        const pressure = data.data.pressure || {};
-        
-        return `
-            <div class="weather-card">
-                <div class="weather-station">${station.name}</div>
-                <div class="weather-data">
-                    <div class="data-item">
-                        <div class="data-label">Wind Speed</div>
-                        <div class="data-value">
-                            ${wind.avg ? wind.avg.toFixed(1) : '--'}
-                            <span class="data-unit">m/s</span>
-                        </div>
-                    </div>
-                    <div class="data-item">
-                        <div class="data-label">Wind Gust</div>
-                        <div class="data-value">
-                            ${wind.gust ? wind.gust.toFixed(1) : '--'}
-                            <span class="data-unit">m/s</span>
-                        </div>
-                    </div>
-                    <div class="data-item">
-                        <div class="data-label">Direction</div>
-                        <div class="data-value">
-                            ${wind.direction || '--'}
-                        </div>
-                    </div>
-                    <div class="data-item">
-                        <div class="data-label">Temperature</div>
-                        <div class="data-value">
-                            ${temp.air !== undefined ? temp.air.toFixed(1) : '--'}
-                            <span class="data-unit">°C</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="timestamp" style="margin-top: 1rem; text-align: center;">
-                    Updated: ${new Date(data.timestamp).toLocaleTimeString()}
-                </div>
+    });
+    
+    let allHTML = '';
+    
+    // Render Solent stations
+    if (regionGroups['Solent'].length > 0) {
+        const solentHTML = regionGroups['Solent'].map(result => generateWeatherCard(result, windUnit)).join('');
+        allHTML += `
+            <div class="region-group">
+                <div class="region-header solent">🌊 Solent Marine Stations</div>
+                <div class="region-stations">${solentHTML}</div>
             </div>
         `;
-    }).join('');
+    }
     
-    container.innerHTML = `<div class="weather-grid">${weatherHTML}</div>`;
+    // Render Chamonix stations
+    if (regionGroups['Chamonix'].length > 0) {
+        const chamonixHTML = regionGroups['Chamonix'].map(result => generateWeatherCard(result, windUnit)).join('');
+        allHTML += `
+            <div class="region-group">
+                <div class="region-header chamonix">🏔️ Chamonix Alpine Stations</div>
+                <div class="region-stations">${chamonixHTML}</div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = allHTML;
+}
+
+function generateWeatherCard(result, windUnit) {
+    if (!result.success) {
+        return `
+            <div class="weather-card">
+                <div class="weather-station">${result.station.name}</div>
+                <div class="error">Failed to load: ${result.error}</div>
+            </div>
+        `;
+    }
+    
+    const { station, data } = result;
+    const wind = data.data.wind || {};
+    const temp = data.data.temperature || {};
+    const pressure = data.data.pressure || {};
+    
+    // Convert wind speeds
+    const windSpeedAvg = wind.avg ? convertWindSpeed(wind.avg, 'ms', windUnit) : null;
+    const windSpeedGust = wind.gust ? convertWindSpeed(wind.gust, 'ms', windUnit) : null;
+    const unitLabel = getWindUnitLabel(windUnit);
+    
+    return `
+        <div class="weather-card">
+            <div class="weather-station">${station.name}</div>
+            <div class="weather-data">
+                <div class="data-item">
+                    <div class="data-label">Wind Speed</div>
+                    <div class="data-value">
+                        ${windSpeedAvg ? windSpeedAvg.toFixed(1) : '--'}
+                        <span class="data-unit">${unitLabel}</span>
+                    </div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Wind Gust</div>
+                    <div class="data-value">
+                        ${windSpeedGust ? windSpeedGust.toFixed(1) : '--'}
+                        <span class="data-unit">${unitLabel}</span>
+                    </div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Direction</div>
+                    <div class="data-value">
+                        ${wind.direction || '--'}
+                    </div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Temperature</div>
+                    <div class="data-value">
+                        ${temp.air !== undefined ? temp.air.toFixed(1) : '--'}
+                        <span class="data-unit">°C</span>
+                    </div>
+                </div>
+            </div>
+            <div class="timestamp" style="margin-top: 1rem; text-align: center;">
+                Updated: ${new Date(data.timestamp).toLocaleTimeString()}
+            </div>
+        </div>
+    `;
+}
+
+// Wind speed conversion functions
+function convertWindSpeed(value, fromUnit, toUnit) {
+    if (fromUnit === toUnit) return value;
+    
+    // Convert from source unit to m/s first
+    let msValue;
+    switch (fromUnit) {
+        case 'ms':
+            msValue = value;
+            break;
+        case 'kts':
+            msValue = value * 0.51444;
+            break;
+        case 'kph':
+            msValue = value / 3.6;
+            break;
+        default:
+            msValue = value;
+    }
+    
+    // Convert from m/s to target unit
+    switch (toUnit) {
+        case 'ms':
+            return msValue;
+        case 'kts':
+            return msValue / 0.51444;
+        case 'kph':
+            return msValue * 3.6;
+        default:
+            return msValue;
+    }
+}
+
+function getWindUnitLabel(unit) {
+    switch (unit) {
+        case 'ms':
+            return 'm/s';
+        case 'kts':
+            return 'kts';
+        case 'kph':
+            return 'km/h';
+        default:
+            return 'm/s';
+    }
 }
 
 // Utility Functions
