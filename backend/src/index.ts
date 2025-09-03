@@ -4,7 +4,7 @@ import { fetchLymingtonWeather, parseLymingtonData } from './parsers/lymington.j
 import { fetchPrarionWeather, parsePrarionData } from './parsers/pioupiou-legacy.js';
 import { fetchTeteDeBalmeWeather, parseTeteDeBalmeData, fetchPlanprazWeather, parsePlanprazData } from './parsers/windbird-legacy.js';
 import { WeatherResponse, RegionWeatherResponse, WeatherData, Env } from './types/weather.js';
-import { formatDisplayLines, createCacheKey, generateContentHash } from './utils/helpers.js';
+import { formatDisplayLines, createCacheKey, generateContentHash, convertWindSpeedForRegion } from './utils/helpers.js';
 
 // Device management imports
 import { DeviceInfo, DeviceRegistrationResponse, DeviceNotFoundError, InvalidMacAddressError } from './types/devices.js';
@@ -812,17 +812,26 @@ async function collectStationData(stationId: string, env: Env): Promise<WeatherR
       return null;
     }
     
-    // Convert to standardized response format (matching our schema v1)
+    // Determine region for unit conversion
+    const region = getRegionForStation(stationId);
+    
+    // Convert wind speeds to regional units
+    const windSpeedConverted = convertWindSpeedForRegion(weatherData.windSpeed, region || 'unknown');
+    const windGustConverted = weatherData.windGust > 0 ? 
+      convertWindSpeedForRegion(weatherData.windGust, region || 'unknown') : null;
+    
+    // Convert to standardized response format with regional units
     const response: WeatherResponse = {
       schema: "weather.v1",
       stationId,
       timestamp: new Date().toISOString(),
       data: {
         wind: {
-          avg: weatherData.windSpeed,
-          gust: weatherData.windGust > 0 ? weatherData.windGust : undefined,
+          avg: windSpeedConverted.value,
+          gust: windGustConverted ? windGustConverted.value : undefined,
           direction: weatherData.windDirection,
-          unit: "mps"
+          unit: windSpeedConverted.unit === 'kt' ? 'kt' : 
+                windSpeedConverted.unit === 'km/h' ? 'km/h' : 'm/s'
         }
       },
       ttl: 300 // 5 minutes

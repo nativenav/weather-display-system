@@ -61,6 +61,7 @@ struct StationData {
   float windSpeed;
   float windGust;
   int windDirection;
+  String windUnit;
   String lastUpdateTime;
 };
 StationData stations[3]; // Array for 3 stations per region
@@ -331,12 +332,12 @@ void drawWeatherData() {
     epaper.drawString("WIND DIR: " + String(stations[i].windDirection) + " deg", x, y);
     y += 42; // Increased from 35 to 42 (20% more spacing)
     
-    // Wind speed (1 decimal) with label
-    epaper.drawString("WIND SPD: " + String(stations[i].windSpeed, 1) + " m/s", x, y);
+    // Wind speed (1 decimal) with dynamic unit label
+    epaper.drawString("WIND SPD: " + String(stations[i].windSpeed, 1) + " " + stations[i].windUnit, x, y);
     y += 42; // Increased from 35 to 42 (20% more spacing)
     
-    // Wind gust (1 decimal) with label
-    epaper.drawString("WIND GUST: " + String(stations[i].windGust, 1) + " m/s", x, y);
+    // Wind gust (1 decimal) with dynamic unit label
+    epaper.drawString("WIND GUST: " + String(stations[i].windGust, 1) + " " + stations[i].windUnit, x, y);
     y += 42; // Increased from 35 to 42 (20% more spacing)
     
     // Temperature (1 decimal, using "deg C") with label - show dashes if not available
@@ -628,6 +629,7 @@ bool parseRegionWeatherResponse(const String& jsonString) {
     stations[i].windSpeed = station["data"]["wind"]["avg"].as<float>();
     stations[i].windGust = station["data"]["wind"]["gust"].as<float>();
     stations[i].windDirection = station["data"]["wind"]["direction"].as<int>();
+    stations[i].windUnit = station["data"]["wind"]["unit"].as<String>();
     
     // Format timestamp to time only (HH:MM UTC)
     String timestamp = station["timestamp"].as<String>();
