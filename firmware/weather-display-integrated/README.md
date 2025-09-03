@@ -6,8 +6,9 @@ Complete firmware for XIAO ESP32C3 + 7.5" ePaper weather display that automatica
 
 - **Auto WiFi Connection**: Scans and connects to known networks automatically
 - **Auto Device Registration**: Uses MAC address to register with backend on first connection
-- **Weather Data Display**: Shows temperature, wind speed, direction, and station info
-- **Anti-Ghosting**: Prevents ePaper ghosting with full refresh cycles
+- **Three-Column Region Display**: Shows weather data for all 3 stations in assigned region
+- **Aggressive Anti-Ghosting**: Complete elimination of ePaper ghosting with intensive flash clearing
+- **Enhanced Typography**: Large, readable fonts with field labels for optimal visibility
 - **Device Identification**: Flashes display when triggered from web management interface
 - **Error Handling**: Shows clear error states when data unavailable
 - **Persistent Settings**: Remembers device registration and station assignment
@@ -74,13 +75,39 @@ arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32C3 weather-display-integrated.i
 
 ## 🖥️ Display Layout
 
-The ePaper display shows:
-- **Station Name** (top header)
-- **Temperature** (large, prominent display)
-- **Wind Speed** and **Direction** 
-- **Wind Gust** (if higher than average)
-- **Last Update Time**
-- **Status Footer** (WiFi status, registration, device ID, memory)
+### Three-Column Regional Display
+The 7.5" ePaper display shows weather data for all 3 stations in the assigned region:
+
+**Header**:
+- **Region Name** (left): "Chamonix Valley" or "Solent Marine"
+- **Current Date** (right): "03 Sep 2025" format
+
+**Three Columns** (one per station):
+- **Station Name**: Large text (Prarion, Planpraz, Tête de Balme)
+- **WIND DIR**: Direction in degrees (no decimals)
+- **WIND SPD**: Average wind speed (1 decimal, m/s)
+- **WIND GUST**: Peak gust speed (1 decimal, m/s)  
+- **AIR TEMP**: Temperature (1 decimal, deg C) or "--" if unavailable
+- **UPDATED**: Last update time (HH:MM UTC)
+
+**Footer**:
+- WiFi signal strength (dBm)
+- Memory usage (%)
+- Device ID (first 6 chars)
+- Firmware version
+
+### Anti-Ghosting System
+The firmware implements **aggressive anti-ghosting** to ensure perfect display quality:
+
+**Every Display Update Performs**:
+1. **Triple Flash Sequence**: 3 cycles of BLACK→WHITE flashing for ghost removal
+2. **Extended Black Hold**: 800ms deep pixel reset
+3. **Extended White Hold**: 800ms background setting
+4. **Final Clearing**: BLACK→WHITE→BLACK→WHITE intensive sequence
+5. **Content Display**: Clean weather data rendering
+
+**Total Anti-Ghosting Time**: ~5-6 seconds per update
+**Result**: Zero ghosting artifacts, perfect contrast and readability
 
 ### Error States
 

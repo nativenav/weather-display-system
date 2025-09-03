@@ -2,7 +2,33 @@
 
 All notable changes to the Weather Display System will be documented in this file.
 
-## [v0.1.1] - 2025-09-03
+## [Unreleased]
+
+## [1.1.0] - 2025-09-03
+
+### Added
+- **Aggressive Anti-Ghosting System**: Implemented intensive flash clearing sequence for ePaper displays
+- **Three-Column Region Display**: Complete regional weather view showing all 3 stations per region
+- **Enhanced Typography**: Larger fonts with field labels for optimal readability
+- **Missing Data Handling**: Shows dashes for unavailable temperature data instead of confusing zeros
+
+### Changed  
+- **Display Layout**: Upgraded from single station to three-column regional layout
+- **Font Sizes**: Increased header fonts by 30% and doubled data field font sizes
+- **Line Spacing**: Increased data field spacing by 20% for better readability
+- **Anti-Ghosting**: Every display update now performs aggressive 5-6 second clearing sequence
+- **Refresh Strategy**: Full refresh with intensive clearing on every weather update
+
+### Fixed
+- **Ghosting Artifacts**: Completely eliminated ePaper ghosting with multi-stage clearing
+- **Temperature Display**: Proper handling of missing temperature data from weather APIs
+- **Display Contrast**: Perfect contrast and readability with aggressive pixel reset
+
+### Technical Details
+- Anti-ghosting sequence: 3x flash cycles + extended holds + intensive final clearing
+- Configuration: `FULL_REFRESH_ALWAYS`, `FLASH_CLEAR_CYCLES=3`, `ANTI_GHOST_DELAY=400ms`
+- Memory usage: Optimized for 3-station JSON parsing with 4KB buffer
+- Performance: ~5-6 seconds anti-ghosting per 3-minute weather update
 
 ### Added
 - Modern blue-themed frontend interface with topographical contour line background

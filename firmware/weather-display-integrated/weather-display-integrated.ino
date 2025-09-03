@@ -215,40 +215,10 @@ void initializeDisplay() {
 
 void refreshDisplay() {
 #ifdef EPAPER_ENABLE
-  DEBUG_PRINTLN("Refreshing ePaper display...");
+  DEBUG_PRINTLN("Refreshing ePaper display with aggressive anti-ghosting...");
   
-  // Use full refresh every 5 cycles to prevent ghosting (improved from 10)
-  bool useFullRefresh = (refreshCycle % FULL_REFRESH_CYCLES == 0) || 
-                        !dataValid || 
-                        identifyRequested;
-  refreshCycle++;
-  
-  if (useFullRefresh) {
-    DEBUG_PRINTLN("Using enhanced anti-ghosting sequence");
-    
-    // Enhanced 4-stage anti-ghosting sequence for better results
-    // Stage 1: Fill with BLACK and refresh
-    epaper.fillScreen(TFT_BLACK);
-    epaper.update();
-    delay(ANTI_GHOST_DELAY);  // Configurable delay
-    
-    // Stage 2: Fill with WHITE and refresh  
-    epaper.fillScreen(TFT_WHITE);
-    epaper.update();
-    delay(ANTI_GHOST_DELAY);
-    
-    // Stage 3: Fill with BLACK again (extra clearing)
-    epaper.fillScreen(TFT_BLACK);
-    epaper.update();
-    delay(ANTI_GHOST_DELAY / 2);  // Shorter delay for intermediate step
-    
-    // Stage 4: Final WHITE background
-    epaper.fillScreen(TFT_WHITE);
-    epaper.update();
-    delay(ANTI_GHOST_DELAY);
-    
-    DEBUG_PRINTLN("Anti-ghosting sequence complete");
-  }
+  // ALWAYS use full refresh with aggressive flashing for zero ghosting
+  performAggressiveAntiGhosting();
   
   // Clear and draw content
   epaper.fillScreen(TFT_WHITE);
@@ -264,8 +234,62 @@ void refreshDisplay() {
   
   epaper.update();
   
-  DEBUG_PRINTF("Display refresh complete (cycle %d, full refresh: %s)\n", 
-               refreshCycle, useFullRefresh ? "yes" : "no");
+  refreshCycle++;
+  DEBUG_PRINTF("Aggressive refresh complete (cycle %d)\n", refreshCycle);
+#endif
+}
+
+void performAggressiveAntiGhosting() {
+#ifdef EPAPER_ENABLE
+  DEBUG_PRINTLN("*** AGGRESSIVE ANTI-GHOSTING SEQUENCE ***");
+  
+  // Multiple flash cycles for maximum ghost elimination
+  for (int flash = 0; flash < FLASH_CLEAR_CYCLES; flash++) {
+    DEBUG_PRINTF("Flash cycle %d/%d\n", flash + 1, FLASH_CLEAR_CYCLES);
+    
+    // Flash BLACK
+    epaper.fillScreen(TFT_BLACK);
+    epaper.update();
+    delay(ANTI_GHOST_DELAY);
+    
+    // Flash WHITE  
+    epaper.fillScreen(TFT_WHITE);
+    epaper.update();
+    delay(ANTI_GHOST_DELAY);
+  }
+  
+  // Final intensive clearing sequence
+  DEBUG_PRINTLN("Final intensive clearing...");
+  
+  // Long BLACK hold
+  epaper.fillScreen(TFT_BLACK);
+  epaper.update();
+  delay(ANTI_GHOST_DELAY * 2);  // Extra long black
+  
+  // Long WHITE hold
+  epaper.fillScreen(TFT_WHITE);
+  epaper.update();
+  delay(ANTI_GHOST_DELAY * 2);  // Extra long white
+  
+  // Final BLACK-WHITE-BLACK sequence
+  epaper.fillScreen(TFT_BLACK);
+  epaper.update();
+  delay(ANTI_GHOST_DELAY);
+  
+  epaper.fillScreen(TFT_WHITE);
+  epaper.update();
+  delay(ANTI_GHOST_DELAY);
+  
+  epaper.fillScreen(TFT_BLACK);
+  epaper.update();
+  delay(ANTI_GHOST_DELAY);
+  
+  // Final clean white background
+  epaper.fillScreen(TFT_WHITE);
+  epaper.update();
+  delay(ANTI_GHOST_DELAY);
+  
+  DEBUG_PRINTLN("*** AGGRESSIVE ANTI-GHOSTING COMPLETE ***");
 #endif
 }
 

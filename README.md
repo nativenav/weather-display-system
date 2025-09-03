@@ -155,7 +155,7 @@ String getWeatherData(String station) {
 | Web Interface | ✅ **Production** | Full management UI deployed |
 | Data Parsers | ✅ **Complete** | UK marine + French alpine sources |
 | Documentation | ✅ **Complete** | Setup guides and API docs |
-| ESP32C3 Firmware | ✅ **Complete** | Full implementation with device management (see DEVICE-MANAGEMENT-STATUS.md) |
+| ESP32C3 Firmware | ✅ **Production** | Three-column display + aggressive anti-ghosting |
 | Mobile App | 📋 **Future** | Planned for Phase 6 |
 
 ---
