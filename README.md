@@ -33,15 +33,21 @@ A complete weather data collection and display system with cloud backend, web ma
 
 ## 📍 Active Weather Stations
 
-### UK Marine Stations
-- **Brambles Bank**: Solent marine weather (Southampton VTS)
-- **Seaview**: Isle of Wight marine data (Navis live data)
-- **Lymington**: Hampshire harbor weather station
+**All 6 stations now operational with live data! ✅**
 
-### French Alpine Stations
-- **Prarion (Les Houches)**: 1,865m altitude, Pioupiou wind station
-- **Tête de Balme**: 2,204m altitude, Windbird station  
-- **Planpraz**: 1,958m altitude, Windbird station
+| Station | Location | Status | Data Source | Last Test |
+|---------|----------|--------|-------------|----------|
+| **Brambles Bank** | Solent, UK | ✅ **LIVE** | Southampton VTS Marine | 24.5kt @ 299° |
+| **Seaview** | Isle of Wight, UK | ✅ **LIVE** | Navis Live Data + Session | 21.4kt @ 197°, 17.7°C |
+| **Lymington** | Hampshire, UK | ✅ **LIVE** | WeatherFile.com V03 API | 26.2kt @ 209°, 31.0kt gust |
+| **Prarion (Les Houches)** | Chamonix, France (1,865m) | ✅ **LIVE** | Pioupiou 521 | Alpine wind data |
+| **Tête de Balme** | Chamonix, France (2,204m) | ✅ **LIVE** | Windbird 1702 | Alpine wind data |
+| **Planpraz** | Chamonix, France (1,958m) | ✅ **LIVE** | Windbird 1724 | Alpine wind data |
+
+### Recent Fixes (September 2025)
+- 🔧 **Lymington**: Fixed WeatherFile.com API integration with V03 endpoints
+- 🔧 **Seaview**: Implemented proper Navis session management with hex parsing
+- ✅ **All Marine Stations**: Now providing real-time Solent sailing conditions
 
 ## 🏗️ Project Structure
 ```

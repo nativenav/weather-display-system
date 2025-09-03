@@ -21,15 +21,40 @@ Cloudflare Workers backend serving weather data from 6 active stations with KV c
 
 ## 📍 Active Weather Stations
 
-### UK Marine (3 stations)
+### UK Marine (3 stations) ✅ All LIVE
 - **brambles**: Brambles Bank (Southampton VTS)
+  - Status: ✅ LIVE - 24.5kt @ 299°, 17.7°C, 995 hPa
 - **seaview**: Seaview (Isle of Wight, Navis)
+  - Status: ✅ LIVE - 21.4kt @ 197°, 17.7°C
+  - Implementation: Session management + hex parsing
 - **lymington**: Lymington Harbour
+  - Status: ✅ LIVE - 26.2kt @ 209°, 31.0kt gust
+  - Implementation: WeatherFile.com V03 enhanced API
 
-### French Alpine (3 stations)
+### French Alpine (3 stations) ✅ All LIVE
 - **prarion**: Les Houches (1,865m, Pioupiou 521)
 - **tetedebalme**: Tête de Balme (2,204m, Windbird 1702)
 - **planpraz**: Planpraz (1,958m, Windbird 1724)
+
+### Recent Parser Fixes (September 2025)
+
+#### 🔧 Seaview Navis Integration
+- **Problem**: API returning "error%" due to missing authentication
+- **Solution**: Implemented proper session management
+- **Details**:
+  - Establish PHPSESSID cookie via GET to session URL
+  - Use cookie in subsequent API requests
+  - Parse hex data using documented MSB/LSB bit manipulation
+  - Extract wind speed, direction, and temperature
+
+#### 🔧 Lymington WeatherFile.com Integration  
+- **Problem**: Parser returning zero values
+- **Solution**: Implemented correct V03 API endpoints
+- **Details**:
+  - Primary: `/V03/loc/GBR00001/infowindow.ggl` (enhanced with averages)
+  - Fallback: `/V03/loc/GBR00001/latest.json` (current data)
+  - POST method with proper headers including `wf-tkn: PUBLIC`
+  - Parse JSON response with wind averages, gusts, and direction
 
 ## 🏗️ Architecture
 
