@@ -19,7 +19,8 @@ import {
   updateDeviceActivity,
   setDeviceIdentifyFlag,
   clearDeviceIdentifyFlag,
-  extractDeviceInfo 
+  extractDeviceInfo,
+  getAllDevices 
 } from './utils/devices.js';
 
 // Legacy interfaces (keeping for compatibility)
@@ -64,7 +65,7 @@ export default {
       } else if (path === '/api/v1/regions') {
         return await handleRegionsRequest(corsHeaders);
       } else if (path === '/api/v1/devices' && request.method === 'GET') {
-        return await handleGetDevicesRequest(corsHeaders);
+        return await handleGetDevicesRequest(env, corsHeaders);
       } else if (path === '/api/v1/devices' && request.method === 'POST') {
         return await handleCreateDeviceRequest(request, env, corsHeaders);
       } else if (path.startsWith('/api/v1/devices/') && request.method === 'GET') {
@@ -673,20 +674,34 @@ async function handleRegionsRequest(corsHeaders: Record<string, string>): Promis
 /**
  * Handle get all devices request: GET /api/v1/devices
  */
-async function handleGetDevicesRequest(corsHeaders: Record<string, string>): Promise<Response> {
-  // For now, return empty list with note about simplified implementation
-  // In production, you'd implement a device registry
-  const devices: DeviceInfo[] = [];
-  
-  return new Response(JSON.stringify({
-    devices,
-    message: 'Device registry not yet implemented - devices auto-register on first connection'
-  }, null, 2), {
-    headers: {
-      'Content-Type': 'application/json',
-      ...corsHeaders
-    }
-  });
+async function handleGetDevicesRequest(env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+  try {
+    const devices = await getAllDevices(env);
+    
+    return new Response(JSON.stringify({
+      devices,
+      count: devices.length,
+      message: devices.length === 0 ? 'No devices registered yet' : `Found ${devices.length} device(s)`
+    }, null, 2), {
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+    
+  } catch (error) {
+    console.error('[ERROR] Failed to get devices:', error);
+    return new Response(JSON.stringify({
+      error: 'Internal Server Error',
+      message: 'Failed to retrieve devices'
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  }
 }
 
 /**

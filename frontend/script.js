@@ -43,6 +43,23 @@ function bindEventListeners() {
     
     // Weather data
     document.getElementById('refresh-data').addEventListener('click', loadWeatherData);
+    
+    // Device nickname editing - use event delegation
+    document.addEventListener('blur', function(e) {
+        if (e.target.matches('.device-name.editing')) {
+            const deviceId = e.target.dataset.deviceId;
+            const newNickname = e.target.value.trim();
+            if (deviceId && newNickname) {
+                saveDeviceNickname(deviceId, newNickname);
+            }
+        }
+    }, true);
+    
+    document.addEventListener('keydown', function(e) {
+        if (e.target.matches('.device-name.editing') && e.key === 'Enter') {
+            e.target.blur();
+        }
+    });
 }
 
 // Backend Status Check
@@ -493,17 +510,25 @@ function displayDevices() {
             )
         ).join('');
         
+        const isEditing = editingDeviceNickname === device.deviceId;
+        
         return `
             <div class="device-card">
                 <div class="device-header">
                     <div>
-                        <input type="text" class="device-name ${editingDeviceNickname === device.deviceId ? 'editing' : ''}" 
-                               value="${device.nickname}" 
-                               data-device-id="${device.deviceId}"
-                               onblur="saveDeviceNickname('${device.deviceId}', this.value)"
-                               onkeydown="if(event.key==='Enter') this.blur()"
-                               ${editingDeviceNickname === device.deviceId ? 'autofocus' : 'readonly'}
-                               onclick="editDeviceNickname('${device.deviceId}')" />
+                        <div class="device-name-container">
+                            <input type="text" 
+                                   class="device-name ${isEditing ? 'editing' : ''}" 
+                                   value="${device.nickname.replace(/"/g, '&quot;')}" 
+                                   data-device-id="${device.deviceId}"
+                                   ${isEditing ? '' : 'readonly'}
+                                   placeholder="Device nickname..." />
+                            <button class="device-name-edit-btn" 
+                                    onclick="editDeviceNickname('${device.deviceId}')" 
+                                    title="Edit nickname">
+                                ✏️
+                            </button>
+                        </div>
                         <div class="device-mac">${device.macAddress}</div>
                     </div>
                     <div class="device-status">

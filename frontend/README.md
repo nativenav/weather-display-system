@@ -4,19 +4,21 @@ This is the comprehensive management interface for the Weather Display System. I
 
 ## 🌐 Access URLs
 
-**Live Management Interface:** https://0b4669b0.weather-management.pages.dev  
+**Live Management Interface:** https://f1de89eb.weather-display-blue.pages.dev  
 **Test Interface:** Add `/test.html` to test connectivity and device registration
+**Previous URL:** ~~https://0b4669b0.weather-management.pages.dev~~ (deprecated - purple theme)
 
 ## 🚀 Features
 
-### 📱 Device Management (NEW!)
+### 📱 Device Management (ENHANCED!)
 - **Auto-registration**: ESP32C3 devices automatically register when they first connect
 - **Real-time status**: Live online/offline status monitoring with smart timestamps
 - **Device identification**: Send identify signals to make devices flash their displays
-- **Nickname editing**: Click-to-edit device names for easy identification
+- **Inline nickname editing**: Click edit button next to device names for easy identification
 - **Station assignment**: Reassign devices to different weather stations via dropdown
 - **Activity tracking**: Monitor last seen times, request counts, and firmware versions
 - **Device scanning**: Manual scan for newly connected devices
+- **Modern UI**: New blue theme with topographical contour line background
 
 ### System Configuration
 - **Collection Frequency**: Change how often weather data is collected from stations (every 5, 10, 15, 30 minutes, or hourly)
@@ -138,7 +140,7 @@ Use the comprehensive test page to verify system functionality:
 # Access test page
 http://localhost:8080/test.html
 # or
-https://0b4669b0.weather-management.pages.dev/test.html
+https://f1de89eb.weather-display-blue.pages.dev/test.html
 ```
 
 **Test Features:**
@@ -178,7 +180,7 @@ npx http-server . -p 8080 -c-1
 ### Deployment
 ```bash
 # Deploy to Cloudflare Pages
-wrangler pages deploy . --project-name=weather-management
+wrangler pages deploy . --project-name=weather-display-blue
 ```
 
 ## 📱 Mobile Friendly

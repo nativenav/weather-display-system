@@ -14,12 +14,12 @@ preview_id = "fc2023f1e990446ebdf656f2a892ec5e"
 # Cron triggers for weather data collection
 [triggers]
 crons = [
-  # Brambles Bank - every 5 minutes (more frequent for comprehensive data)
-  "*/5 * * * *",
-  # Seaview - every 2 minutes (real-time wind data)  
+  # Chamonix stations - every 3 minutes (minimum interval for device sync)
+  "*/3 * * * *",
+  # Solent stations - every 2 minutes (real-time marine wind data)
   "*/2 * * * *",
-  # Lymington - every 3 minutes (stable data source)
-  "*/3 * * * *"
+  # Backup comprehensive collection - every 5 minutes
+  "*/5 * * * *"
 ]
 
 # Environment variables

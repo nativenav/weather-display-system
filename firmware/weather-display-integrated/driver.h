@@ -1,49 +1,55 @@
 /**
  * Hardware Driver Configuration
  * Weather Display Integrated - XIAO ESP32C3 + 7.5" ePaper
+ * 
+ * Uses Seeed_GFX library (fork of TFT_eSPI) for ePaper support
+ * Setup 502 provides proper configuration for 7.5" ePaper with UC8179 controller
  */
 
 #pragma once
 
-// Target hardware configuration
-#define TARGET_BOARD_XIAO_ESP32C3
+// Required by Seeed_GFX Dynamic_Setup.h
+#define BOARD_SCREEN_COMBO 502 // 7.5 inch monochrome ePaper Screen (UC8179)
 #define USE_XIAO_EPAPER_DRIVER_BOARD
 
-// ePaper Display Configuration
-#define BOARD_SCREEN_COMBO 502 // 7.5 inch monochrome ePaper Screen (UC8179)
-#define EPAPER_ENABLE 1
+// Use Seeed_GFX Setup502 for XIAO ESP32C3 + 7.5" ePaper
+#define USER_SETUP_ID 502
+#define UC8179_DRIVER
+#define EPAPER_ENABLE 1  // Enable ePaper display
 
-// Include the ePaper library definitions
+// Display dimensions (7.5" ePaper - UC8179 controller)
+#define TFT_WIDTH 800
+#define TFT_HEIGHT 480
+#define EPD_WIDTH TFT_WIDTH
+#define EPD_HEIGHT TFT_HEIGHT
+
+// Pin definitions for XIAO ePaper Driver Board
+#define TFT_SCLK D8   // SCLK
+#define TFT_MISO D9   // MISO  
+#define TFT_MOSI D10  // MOSI
+#define TFT_CS   D1   // CS - Chip select control pin
+#define TFT_DC   D3   // DC - Data Command control pin
+#define TFT_BUSY D2   // BUSY
+#define TFT_RST  D0   // RST - Reset pin
+
+// Font loading
+#define LOAD_GLCD   // Font 1. Original Adafruit 8 pixel font
+#define LOAD_FONT2  // Font 2. Small 16 pixel high font
+#define LOAD_FONT4  // Font 4. Medium 26 pixel high font
+#define LOAD_FONT6  // Font 6. Large 48 pixel font
+#define LOAD_FONT7  // Font 7. 7 segment 48 pixel font
+#define LOAD_FONT8  // Font 8. Large 75 pixel font
+#define LOAD_GFXFF  // FreeFonts access
+#define SMOOTH_FONT
+
+// SPI frequency for XIAO ESP32C3
+#define SPI_FREQUENCY 10000000
+#define SPI_READ_FREQUENCY 4000000
+
+// Display refresh settings (Seeed_GFX provides native EPaper class)
 #ifdef EPAPER_ENABLE
-  // Using TFT_eSPI library with custom configuration for ePaper
-  // Make sure to install Seeed_GFX library from GitHub:
-  // https://github.com/Seeed-Studio/Seeed_GFX
-  
-  // Display dimensions (UC8179 controller)
-  #define DISPLAY_WIDTH  800
-  #define DISPLAY_HEIGHT 480
-  
-  // SPI Pin definitions for XIAO ePaper Driver Board
-  #define EPAPER_SCK   8   // D8 - SCLK
-  #define EPAPER_MISO  9   // D9 - MISO  
-  #define EPAPER_MOSI  10  // D10 - MOSI
-  #define EPAPER_CS    1   // D1 - CS
-  #define EPAPER_DC    3   // D3 - DC
-  #define EPAPER_BUSY  2   // D2 - BUSY
-  #define EPAPER_RST   0   // D0 - RST
-  
-  // Include TFT_eSPI configured for ePaper
-  #include <TFT_eSPI.h>
-  
-  // Create ePaper display object
-  typedef TFT_eSPI EPaper;
-  
-  // Display refresh settings
   #define USE_FULL_REFRESH true
   #define ANTI_GHOSTING_ENABLED true
-  
-#else
-  #warning "ePaper display not enabled! Set EPAPER_ENABLE to 1"
 #endif
 
 // LED Configuration
@@ -51,7 +57,7 @@
 #define STATUS_LED_PIN LED_BUILTIN
 
 // Debug Configuration
-#ifdef DEBUG
+#if DEBUG
   #define DEBUG_PRINTLN(x) Serial.println(x)
   #define DEBUG_PRINTF(fmt, ...) Serial.printf(fmt, ##__VA_ARGS__)
 #else

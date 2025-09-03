@@ -52,13 +52,16 @@ export async function getDevice(deviceId: string, env: Env): Promise<DeviceInfo 
 }
 
 /**
- * Save device to cache
+ * Save device to cache and update device index
  */
 export async function saveDevice(device: DeviceInfo, env: Env): Promise<void> {
   const cacheKey = createDeviceCacheKey(device.deviceId);
   await env.WEATHER_CACHE.put(cacheKey, JSON.stringify(device), {
     expirationTtl: 86400 // 24 hours
   });
+  
+  // Update device index for getAllDevices
+  await addToDeviceIndex(device.deviceId, env);
 }
 
 /**
@@ -134,18 +137,90 @@ export function updateDeviceStatus(device: DeviceInfo): DeviceInfo {
 }
 
 /**
- * Get all devices from cache (simplified implementation)
+ * Device index key
+ */
+const DEVICE_INDEX_KEY = 'registry:device_index';
+
+/**
+ * Add device ID to the device index
+ */
+export async function addToDeviceIndex(deviceId: string, env: Env): Promise<void> {
+  try {
+    const existingIndex = await env.WEATHER_CACHE.get(DEVICE_INDEX_KEY, { type: 'json' }) as string[] || [];
+    
+    if (!existingIndex.includes(deviceId)) {
+      existingIndex.push(deviceId);
+      await env.WEATHER_CACHE.put(DEVICE_INDEX_KEY, JSON.stringify(existingIndex), {
+        expirationTtl: 604800 // 7 days (longer than device TTL)
+      });
+    }
+  } catch (error) {
+    console.error(`[ERROR] Failed to update device index for ${deviceId}:`, error);
+  }
+}
+
+/**
+ * Remove device ID from the device index
+ */
+export async function removeFromDeviceIndex(deviceId: string, env: Env): Promise<void> {
+  try {
+    const existingIndex = await env.WEATHER_CACHE.get(DEVICE_INDEX_KEY, { type: 'json' }) as string[] || [];
+    const updatedIndex = existingIndex.filter(id => id !== deviceId);
+    
+    if (updatedIndex.length !== existingIndex.length) {
+      await env.WEATHER_CACHE.put(DEVICE_INDEX_KEY, JSON.stringify(updatedIndex), {
+        expirationTtl: 604800 // 7 days
+      });
+    }
+  } catch (error) {
+    console.error(`[ERROR] Failed to remove from device index ${deviceId}:`, error);
+  }
+}
+
+/**
+ * Get all devices from cache using the device index
  */
 export async function getAllDevices(env: Env): Promise<DeviceInfo[]> {
-  // Note: This is a simplified implementation
-  // In a real system, you'd want a separate index or database
-  const devices: DeviceInfo[] = [];
-  
-  // For now, we'll return an empty array
-  // This could be enhanced with a device registry in KV storage
-  console.log('[INFO] getAllDevices called - simplified implementation');
-  
-  return devices;
+  try {
+    // Get the device index
+    const deviceIds = await env.WEATHER_CACHE.get(DEVICE_INDEX_KEY, { type: 'json' }) as string[] || [];
+    
+    if (deviceIds.length === 0) {
+      console.log('[INFO] No devices in index');
+      return [];
+    }
+    
+    console.log(`[INFO] Found ${deviceIds.length} devices in index: ${deviceIds.join(', ')}`);
+    
+    // Fetch all devices in parallel
+    const devicePromises = deviceIds.map(async (deviceId) => {
+      try {
+        const device = await getDevice(deviceId, env);
+        if (device) {
+          // Update status based on last seen
+          return updateDeviceStatus(device);
+        }
+        return null;
+      } catch (error) {
+        console.error(`[ERROR] Failed to fetch device ${deviceId}:`, error);
+        return null;
+      }
+    });
+    
+    const devices = await Promise.all(devicePromises);
+    
+    // Filter out null values and sort by last seen (most recent first)
+    const validDevices = devices
+      .filter((device): device is DeviceInfo => device !== null)
+      .sort((a, b) => new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime());
+    
+    console.log(`[INFO] Returning ${validDevices.length} valid devices`);
+    return validDevices;
+    
+  } catch (error) {
+    console.error('[ERROR] Failed to get all devices:', error);
+    return [];
+  }
 }
 
 /**

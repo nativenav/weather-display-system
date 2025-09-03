@@ -12,9 +12,10 @@
 #define BACKEND_URL "https://weather-backend.nativenav.workers.dev"
 
 // Update Intervals (milliseconds)
-#define WEATHER_UPDATE_INTERVAL 300000    // 5 minutes
-#define HEARTBEAT_INTERVAL 30000          // 30 seconds  
-#define WIFI_CHECK_INTERVAL 10000         // 10 seconds
+// Backend cron triggers run every 2-3 minutes, device sync matches this frequency
+#define WEATHER_UPDATE_INTERVAL 180000    // 3 minutes (aligned with backend cron schedule)
+#define HEARTBEAT_INTERVAL 60000          // 1 minute (device status monitoring)
+#define WIFI_CHECK_INTERVAL 30000         // 30 seconds (connection monitoring)
 
 // Display Settings
 #define FULL_REFRESH_CYCLES 10            // Full refresh every N cycles

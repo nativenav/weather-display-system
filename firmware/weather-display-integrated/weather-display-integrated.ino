@@ -83,6 +83,13 @@ void setup() {
   Serial.begin(115200);
   delay(2000); // Allow serial monitor to connect
   
+  // Force serial output even if DEBUG not working
+  Serial.println("========================================");
+  Serial.println("  Weather Display Integrated v1.0");
+  Serial.println("  XIAO ESP32C3 + 7.5\" ePaper");
+  Serial.println("  DEBUG OUTPUT ENABLED");
+  Serial.println("========================================");
+  
   DEBUG_PRINTLN("========================================");
   DEBUG_PRINTLN("  Weather Display Integrated v1.0");
   DEBUG_PRINTLN("  XIAO ESP32C3 + 7.5\" ePaper");
@@ -102,8 +109,10 @@ void setup() {
   deviceId.replace(":", "");
   deviceId.toLowerCase();
   
-  DEBUG_PRINTF("Device MAC: %s\\n", deviceMAC.c_str());
-  DEBUG_PRINTF("Device ID: %s\\n", deviceId.c_str());
+  Serial.printf("Device MAC: %s\n", deviceMAC.c_str());
+  Serial.printf("Device ID: %s\n", deviceId.c_str());
+  DEBUG_PRINTF("Device MAC: %s\n", deviceMAC.c_str());
+  DEBUG_PRINTF("Device ID: %s\n", deviceId.c_str());
   
   // Initialize ePaper display
   initializeDisplay();
@@ -114,7 +123,7 @@ void setup() {
   // Load persisted settings
   loadSettings();
   
-  DEBUG_PRINTF("Free heap after setup: %d bytes\\n", ESP.getFreeHeap());
+  DEBUG_PRINTF("Free heap after setup: %d bytes\n", ESP.getFreeHeap());
   DEBUG_PRINTLN("Setup complete! Starting weather updates...");
   
   // Force first update
@@ -160,7 +169,7 @@ void loop() {
   // Memory monitoring
   static unsigned long lastHeapCheck = 0;
   if (currentTime - lastHeapCheck > 30000) { // Every 30 seconds
-    DEBUG_PRINTF("Free heap: %d bytes\\n", ESP.getFreeHeap());
+    DEBUG_PRINTF("Free heap: %d bytes\n", ESP.getFreeHeap());
     lastHeapCheck = currentTime;
   }
   
@@ -310,6 +319,7 @@ void drawStatusFooter() {
 
 void performIdentifySequence() {
 #ifdef EPAPER_ENABLE
+  Serial.println("*** IDENTIFY SEQUENCE STARTING ***");
   DEBUG_PRINTLN("Performing identify sequence...");
   
   // Flash display 3 times
@@ -326,6 +336,7 @@ void performIdentifySequence() {
   // Restore normal display
   needsDisplayUpdate = true;
   
+  Serial.println("*** IDENTIFY SEQUENCE COMPLETE ***");
   DEBUG_PRINTLN("Identify sequence complete");
 #endif
 }
@@ -347,13 +358,13 @@ void connectToWiFi() {
   DEBUG_PRINTLN("Scanning for known networks...");
   
   int numNetworks = WiFi.scanNetworks();
-  DEBUG_PRINTF("Found %d networks\\n", numNetworks);
+  DEBUG_PRINTF("Found %d networks\n", numNetworks);
   
   // Try each configured network
   for (int i = 0; i < NUM_WIFI_NETWORKS; i++) {
     for (int j = 0; j < numNetworks; j++) {
       if (WiFi.SSID(j) == WIFI_NETWORKS[i].ssid) {
-        DEBUG_PRINTF("Connecting to %s...\\n", WIFI_NETWORKS[i].ssid);
+        DEBUG_PRINTF("Connecting to %s...\n", WIFI_NETWORKS[i].ssid);
         
         WiFi.begin(WIFI_NETWORKS[i].ssid, WIFI_NETWORKS[i].password);
         
@@ -367,11 +378,21 @@ void connectToWiFi() {
         if (WiFi.status() == WL_CONNECTED) {
           wifiConnected = true;
           wifiReconnectAttempts = 0;
-          DEBUG_PRINTF("\\nConnected! IP: %s\\n", WiFi.localIP().toString().c_str());
+          
+          // Enhanced WiFi connection info
+          Serial.println("\n*** WiFi Connection Successful ***");
+          Serial.printf("SSID: %s\n", WiFi.SSID().c_str());
+          Serial.printf("IP Address: %s\n", WiFi.localIP().toString().c_str());
+          Serial.printf("Signal Strength: %d dBm\n", WiFi.RSSI());
+          Serial.printf("Gateway: %s\n", WiFi.gatewayIP().toString().c_str());
+          Serial.printf("DNS: %s\n", WiFi.dnsIP().toString().c_str());
+          Serial.println("********************************");
+          
+          DEBUG_PRINTF("\nConnected! IP: %s\n", WiFi.localIP().toString().c_str());
           needsDisplayUpdate = true;
           return;
         } else {
-          DEBUG_PRINTLN("\\nConnection failed");
+          DEBUG_PRINTLN("\nConnection failed");
         }
       }
     }
@@ -388,7 +409,7 @@ void monitorWiFiStatus() {
   wifiConnected = (WiFi.status() == WL_CONNECTED);
   
   if (previousStatus != wifiConnected) {
-    DEBUG_PRINTF("WiFi status changed: %s\\n", wifiConnected ? "Connected" : "Disconnected");
+    DEBUG_PRINTF("WiFi status changed: %s\n", wifiConnected ? "Connected" : "Disconnected");
     needsDisplayUpdate = true;
     
     if (!wifiConnected) {
@@ -418,6 +439,7 @@ bool shouldSendHeartbeat(unsigned long currentTime) {
 }
 
 void updateWeatherData() {
+  Serial.println("Updating weather data...");
   DEBUG_PRINTLN("Updating weather data...");
   
   HTTPClient http;
@@ -450,7 +472,7 @@ void updateWeatherData() {
     dataValid = false;
     lastError = "HTTP " + String(httpResponseCode);
     lastErrorTime = millis();
-    DEBUG_PRINTF("HTTP error: %d\\n", httpResponseCode);
+    DEBUG_PRINTF("HTTP error: %d\n", httpResponseCode);
     needsDisplayUpdate = true;
   }
   
@@ -463,7 +485,7 @@ bool parseWeatherResponse(const String& jsonString) {
   DeserializationError error = deserializeJson(doc, jsonString);
   
   if (error) {
-    DEBUG_PRINTF("JSON parse error: %s\\n", error.c_str());
+    DEBUG_PRINTF("JSON parse error: %s\n", error.c_str());
     return false;
   }
   
@@ -509,7 +531,7 @@ void handleNewDeviceResponse(const String& jsonString) {
     // Save settings
     saveSettings();
     
-    DEBUG_PRINTF("Device registered! Assigned station: %s\\n", currentStationId.c_str());
+    DEBUG_PRINTF("Device registered! Assigned station: %s\n", currentStationId.c_str());
     
     // Trigger identify sequence for new device
     identifyRequested = true;
@@ -518,6 +540,7 @@ void handleNewDeviceResponse(const String& jsonString) {
 }
 
 void sendHeartbeat() {
+  Serial.println("Sending heartbeat...");
   DEBUG_PRINTLN("Sending heartbeat...");
   
   HTTPClient http;
@@ -527,15 +550,15 @@ void sendHeartbeat() {
   http.addHeader("Content-Type", "application/json");
   http.addHeader("User-Agent", "WeatherDisplay/1.0 ESP32C3-" + deviceId);
   
-  String payload = "{\\"deviceId\\":\\"" + deviceId + "\\",\\"timestamp\\":\\"" + 
-                   String(millis()) + "\\"}";
+  String payload = "{\"deviceId\":\"" + deviceId + "\",\"timestamp\":\"" + 
+                   String(millis()) + "\"}";
   
   int httpResponseCode = http.POST(payload);
   
   if (httpResponseCode == 200) {
     DEBUG_PRINTLN("Heartbeat sent successfully");
   } else {
-    DEBUG_PRINTF("Heartbeat failed: HTTP %d\\n", httpResponseCode);
+    DEBUG_PRINTF("Heartbeat failed: HTTP %d\n", httpResponseCode);
   }
   
   http.end();
@@ -552,7 +575,7 @@ void loadSettings() {
   isRegistered = preferences.getBool("registered", false);
   currentStationId = preferences.getString("stationId", "prarion"); // Default
   
-  DEBUG_PRINTF("Loaded - Registered: %s, Station: %s\\n", 
+  DEBUG_PRINTF("Loaded - Registered: %s, Station: %s\n", 
                isRegistered ? "true" : "false", 
                currentStationId.c_str());
 }

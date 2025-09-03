@@ -1,6 +1,6 @@
 # Weather Display System
 
-🌤️ **Live System Status**: [Management Interface](https://0b4669b0.weather-management.pages.dev) | [API Health](https://weather-backend.nativenav.workers.dev/health)
+🌤️ **Live System Status**: [Management Interface](https://f1de89eb.weather-display-blue.pages.dev) | [API Health](https://weather-backend.nativenav.workers.dev/health)
 
 A complete weather data collection and display system with cloud backend, web management interface, and ESP32C3 firmware for ePaper displays. Currently monitoring 6 weather stations across UK marine and French alpine locations.
 
@@ -17,7 +17,7 @@ A complete weather data collection and display system with cloud backend, web ma
 ## 🌐 Live System URLs
 
 ### 🖥️ Management Interface
-**https://0b4669b0.weather-management.pages.dev**
+**https://f1de89eb.weather-display-blue.pages.dev**
 - **Device Management**: Auto-registered ESP32C3 devices with real-time status
 - **Device Operations**: Rename devices, reassign stations, identify (flash display)
 - **Station Control**: Enable/disable weather stations
@@ -93,9 +93,10 @@ weather-display-system/
 ## 🚀 Quick Start
 
 ### View Live Data
-1. Visit the [Management Interface](https://0b4669b0.weather-management.pages.dev)
+1. Visit the [Management Interface](https://f1de89eb.weather-display-blue.pages.dev)
 2. Monitor real-time weather data from all 6 stations
 3. Enable/disable stations or trigger manual data collection
+4. Edit device nicknames inline with the new blue-themed interface
 
 ### Use the API
 ```bash
