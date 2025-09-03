@@ -4,7 +4,7 @@ This is the comprehensive management interface for the Weather Display System. I
 
 ## 🌐 Access URLs
 
-**Live Management Interface:** https://f1de89eb.weather-display-blue.pages.dev  
+**Live Management Interface:** https://wds.nativenav.com  
 **Test Interface:** Add `/test.html` to test connectivity and device registration
 **Previous URL:** ~~https://0b4669b0.weather-management.pages.dev~~ (deprecated - purple theme)
 
@@ -140,7 +140,7 @@ Use the comprehensive test page to verify system functionality:
 # Access test page
 http://localhost:8080/test.html
 # or
-https://f1de89eb.weather-display-blue.pages.dev/test.html
+https://wds.nativenav.com/test.html
 ```
 
 **Test Features:**

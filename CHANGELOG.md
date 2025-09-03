@@ -7,7 +7,7 @@ All notable changes to the Weather Display System will be documented in this fil
 ### Added
 - Modern blue-themed frontend interface with topographical contour line background
 - Enhanced nickname editing with dedicated edit buttons and improved UX
-- New Cloudflare Pages deployment: `https://f1de89eb.weather-display-blue.pages.dev`
+- New Cloudflare Pages deployment: `https://wds.nativenav.com` (friendly URL: `https://f1de89eb.weather-display-blue.pages.dev`)
 - Inline device nickname editing with visual feedback
 - Improved CSS styling with wind-inspired background animations
 - Better responsive design for mobile devices
