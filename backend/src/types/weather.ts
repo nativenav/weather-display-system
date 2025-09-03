@@ -66,7 +66,7 @@ export interface ParseResult {
 // HTTP fetch result with retry info
 export interface FetchResult {
   success: boolean;
-  data?: string;
+  data?: any; // Can be string, object, or other types depending on API
   status?: number;
   error?: string;
   fetchTime: number;

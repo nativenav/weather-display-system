@@ -1,33 +1,77 @@
 import { WeatherData, ParseResult, FetchResult } from '../types/weather.js';
-import { retryWithBackoff, formatTimestamp } from '../utils/helpers.js';
-import * as cheerio from 'cheerio';
+import { retryWithBackoff } from '../utils/helpers.js';
 
-// Lymington weather data URL - assuming similar pattern to UK coastal stations
-const LYMINGTON_URL = "https://www.lymingtonharbour.co.uk/weather-data/";
+// Lymington WeatherFile.com V03 API - correct implementation from documentation
+const LYMINGTON_BASE_URL = "https://weatherfile.com";
+const LYMINGTON_LOCATION_ID = "GBR00001";
 
-// Headers to mimic browser request
+// Primary endpoint (Enhanced Data with averages)
+const LYMINGTON_ENHANCED_URL = `${LYMINGTON_BASE_URL}/V03/loc/${LYMINGTON_LOCATION_ID}/infowindow.ggl`;
+// Fallback endpoint (Current Data only)
+const LYMINGTON_CURRENT_URL = `${LYMINGTON_BASE_URL}/V03/loc/${LYMINGTON_LOCATION_ID}/latest.json`;
+
+// Headers required for WeatherFile.com V03 API (from documentation)
 const LYMINGTON_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
-  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-  'Accept-Language': 'en-GB,en;q=0.9',
-  'Accept-Encoding': 'gzip, deflate',
-  'DNT': '1',
-  'Connection': 'keep-alive',
-  'Upgrade-Insecure-Requests': '1'
+  'User-Agent': 'Mozilla/5.0 (compatible; WeatherStation/1.0)',
+  'Accept': '*/*',
+  'X-Requested-With': 'XMLHttpRequest',
+  'Referer': `${LYMINGTON_BASE_URL}/location?loc_id=${LYMINGTON_LOCATION_ID}&wt=KTS`,
+  'Origin': LYMINGTON_BASE_URL,
+  'Content-Length': '0',
+  'wf-tkn': 'PUBLIC'
 };
 
+// Enhanced API response structure
+interface LymingtonEnhancedResponse {
+  status: string;
+  data: {
+    loc_id: string;
+    display_name: string;
+    lat: number;
+    lng: number;
+    lastaverage: {
+      wsa: number;  // Wind Speed Average (m/s)
+      wsh: number;  // Wind Speed High/Max (m/s) - GUST DATA!
+      wsl: number;  // Wind Speed Low (m/s)
+      wda: number;  // Wind Direction Average (degrees)
+      ts: string;   // Timestamp
+      date: string;
+      time: string;
+    }
+  };
+  token: string;
+}
+
+// Current API response structure
+interface LymingtonCurrentResponse {
+  status: string;
+  data: {
+    wdc: number;      // Wind direction current (degrees)
+    wsc: number;      // Wind speed current (m/s)
+    ts: string;       // Timestamp
+    loc_name: string;
+    lat: number;
+    lng: number;
+    delay: number;    // Data delay (minutes)
+    num_params: number;
+  };
+}
+
 /**
- * Fetch Lymington weather data from website
+ * Fetch Lymington weather data using WeatherFile V03 API
  */
 export async function fetchLymingtonWeather(): Promise<FetchResult> {
   const startTime = Date.now();
   
-  const fetchAttempt = async (attempt: number): Promise<Response> => {
-    console.log(`[INFO] Fetching Lymington weather data (attempt ${attempt})...`);
+  console.log('[INFO] Fetching Lymington Starting Platform weather data...');
+  
+  // Try enhanced endpoint first (with averages and gust data)
+  const fetchEnhanced = async (attempt: number): Promise<Response> => {
+    console.log(`[INFO] Fetching enhanced data (attempt ${attempt}) from ${LYMINGTON_ENHANCED_URL}...`);
     
-    const response = await fetch(LYMINGTON_URL, {
-      method: 'GET',
-      headers: LYMINGTON_HEADERS,
+    const response = await fetch(LYMINGTON_ENHANCED_URL, {
+      method: 'POST',
+      headers: LYMINGTON_HEADERS
     });
     
     if (!response.ok) {
@@ -38,27 +82,86 @@ export async function fetchLymingtonWeather(): Promise<FetchResult> {
   };
   
   try {
-    const response = await retryWithBackoff(fetchAttempt, 3, 2000);
-    const htmlContent = await response.text();
+    const response = await retryWithBackoff(fetchEnhanced, 3, 2000);
+    const jsonData = await response.text();
     const fetchTime = Date.now() - startTime;
     
-    console.log(`[DEBUG] Lymington HTML fetched: ${htmlContent.length} bytes in ${fetchTime}ms`);
+    console.log(`[DEBUG] Enhanced API response: ${jsonData.length} bytes in ${fetchTime}ms`);
+    console.log(`[DEBUG] Response preview: ${jsonData.substring(0, 200)}`);
     
-    // Basic validation
-    if (htmlContent.length < 100) {
-      throw new Error('Response too short, likely not weather data');
+    // Try to parse as JSON
+    try {
+      const parsedData: LymingtonEnhancedResponse = JSON.parse(jsonData);
+      if (parsedData.status === 'ok') {
+        return {
+          success: true,
+          data: parsedData,
+          status: response.status,
+          fetchTime,
+          attempts: 1
+        };
+      } else {
+        throw new Error(`API returned error status: ${parsedData.status}`);
+      }
+    } catch (parseError) {
+      console.warn('[WARNING] Enhanced API JSON parse failed, trying current endpoint...', parseError);
+      return await fetchLymingtonCurrent();
+    }
+  } catch (error) {
+    console.error('[ERROR] Enhanced API failed, trying current endpoint...', error);
+    return await fetchLymingtonCurrent();
+  }
+}
+
+/**
+ * Fallback to current data endpoint
+ */
+async function fetchLymingtonCurrent(): Promise<FetchResult> {
+  const startTime = Date.now();
+  
+  console.log('[INFO] Fetching Lymington current data fallback...');
+  
+  try {
+    const response = await fetch(LYMINGTON_CURRENT_URL, {
+      method: 'POST',
+      headers: LYMINGTON_HEADERS
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     
-    return {
-      success: true,
-      data: htmlContent,
-      status: response.status,
-      fetchTime,
-      attempts: 1
-    };
+    const jsonData = await response.text();
+    const fetchTime = Date.now() - startTime;
+    
+    console.log(`[DEBUG] Current API response: ${jsonData.length} bytes in ${fetchTime}ms`);
+    
+    // Try to parse as JSON
+    try {
+      const parsedData: LymingtonCurrentResponse = JSON.parse(jsonData);
+      if (parsedData.status === 'ok') {
+        return {
+          success: true,
+          data: parsedData,
+          status: response.status,
+          fetchTime,
+          attempts: 1
+        };
+      } else {
+        throw new Error(`Current API returned error status: ${parsedData.status}`);
+      }
+    } catch (parseError) {
+      console.error('[ERROR] Current API JSON parse failed:', parseError);
+      return {
+        success: false,
+        error: 'Failed to parse JSON from current API',
+        fetchTime,
+        attempts: 1
+      };
+    }
   } catch (error) {
     const fetchTime = Date.now() - startTime;
-    console.error('[ERROR] Failed to fetch Lymington data:', error);
+    console.error('[ERROR] Lymington current API fallback failed:', error);
     
     return {
       success: false,
@@ -70,15 +173,15 @@ export async function fetchLymingtonWeather(): Promise<FetchResult> {
 }
 
 /**
- * Parse Lymington HTML weather data
+ * Parse Lymington V03 API response data
  */
-export function parseLymingtonData(htmlContent: string): ParseResult {
+export function parseLymingtonData(data: any): ParseResult {
   const parseStart = Date.now();
   console.log('[INFO] Parsing Lymington weather data...');
   
   try {
     // Initialize weather data
-    const data: WeatherData = {
+    const weatherData: WeatherData = {
       temperature: 0.0,
       humidity: 0.0,
       pressure: 0.0,
@@ -90,146 +193,90 @@ export function parseLymingtonData(htmlContent: string): ParseResult {
       precipitation: 0.0,
       conditions: '',
       timestamp: '',
-      location: 'Lymington, Hampshire',
+      location: 'Lymington Starting Platform',
       isValid: false,
       parseTime: 0
     };
     
-    const $ = cheerio.load(htmlContent);
-    
-    // Look for weather data in various potential formats
-    // This is a generic parser - may need adjustment based on actual Lymington site structure
-    
-    // Try to extract wind data
-    const windSpeedText = extractTextValue($, [
-      'td:contains("Wind Speed")', 
-      '.wind-speed', 
-      '#windspeed',
-      '[data-field="windspeed"]'
-    ]);
-    
-    const windGustText = extractTextValue($, [
-      'td:contains("Wind Gust")', 
-      '.wind-gust', 
-      '#windgust',
-      '[data-field="windgust"]'
-    ]);
-    
-    const windDirText = extractTextValue($, [
-      'td:contains("Wind Direction")', 
-      '.wind-direction', 
-      '#winddirection',
-      '[data-field="winddir"]'
-    ]);
-    
-    // Try to extract environmental data
-    const temperatureText = extractTextValue($, [
-      'td:contains("Temperature")', 
-      '.temperature', 
-      '#temperature',
-      '[data-field="temp"]'
-    ]);
-    
-    const pressureText = extractTextValue($, [
-      'td:contains("Pressure")', 
-      '.pressure', 
-      '#pressure',
-      '[data-field="pressure"]'
-    ]);
-    
-    const humidityText = extractTextValue($, [
-      'td:contains("Humidity")', 
-      '.humidity', 
-      '#humidity',
-      '[data-field="humidity"]'
-    ]);
-    
-    // Parse wind speed (expecting knots, mph, or m/s)
-    if (windSpeedText) {
-      const speed = parseWeatherValue(windSpeedText);
-      if (speed > 0) {
-        // Convert to m/s if needed (assuming knots by default for marine stations)
-        data.windSpeed = speed * 0.514444; // knots to m/s conversion
-        console.log(`[DEBUG] Parsed wind speed: ${speed} kt -> ${data.windSpeed.toFixed(2)} m/s`);
+    // Handle Enhanced API response structure
+    if (data && typeof data === 'object' && data.status === 'ok' && data.data && data.data.lastaverage) {
+      console.log('[DEBUG] Parsing enhanced API response...');
+      const avgData = data.data.lastaverage;
+      
+      console.log('[DEBUG] Raw avgData:', JSON.stringify(avgData, null, 2));
+      
+      // Extract wind data (WeatherFile returns in m/s - confirmed from API test)
+      if (typeof avgData.wsa === 'number' && avgData.wsa >= 0) {
+        weatherData.windSpeed = avgData.wsa; // Wind Speed Average (m/s)
+        console.log(`[DEBUG] Average wind speed: ${avgData.wsa} m/s`);
+      }
+      
+      if (typeof avgData.wsh === 'number' && avgData.wsh >= 0) {
+        weatherData.windGust = avgData.wsh; // Wind Speed High/Max (m/s) - GUST DATA!
+        console.log(`[DEBUG] Gust speed: ${avgData.wsh} m/s`);
+      }
+      
+      if (typeof avgData.wda === 'number' && avgData.wda >= 0 && avgData.wda < 360) {
+        weatherData.windDirection = Math.round(avgData.wda); // Wind Direction Average
+        console.log(`[DEBUG] Wind direction: ${avgData.wda}°`);
+      }
+      
+      // Set timestamp and location from response
+      weatherData.timestamp = avgData.ts || new Date().toISOString();
+      weatherData.location = data.data.display_name || 'Lymington Starting Platform';
+      
+      console.log(`[DEBUG] Location: ${weatherData.location}, Time: ${weatherData.timestamp}`);
+      
+      // Mark as valid if we have wind data
+      if (weatherData.windSpeed > 0 || weatherData.windDirection >= 0) {
+        weatherData.isValid = true;
       }
     }
-    
-    // Parse wind gust
-    if (windGustText) {
-      const gust = parseWeatherValue(windGustText);
-      if (gust > 0) {
-        data.windGust = gust * 0.514444; // knots to m/s conversion
-        console.log(`[DEBUG] Parsed wind gust: ${gust} kt -> ${data.windGust.toFixed(2)} m/s`);
+    // Handle Current API response structure
+    else if (data && typeof data === 'object' && data.status === 'ok' && data.data && typeof data.data.wsc === 'number') {
+      console.log('[DEBUG] Parsing current API response...');
+      
+      // Extract current wind data (already in m/s from WeatherFile API)
+      if (typeof data.data.wsc === 'number' && data.data.wsc >= 0) {
+        weatherData.windSpeed = data.data.wsc; // Wind Speed Current (m/s)
+        weatherData.windGust = data.data.wsc; // Current reading, no separate gust
+        console.log(`[DEBUG] Current wind speed: ${data.data.wsc} m/s`);
       }
-    }
-    
-    // Parse wind direction
-    if (windDirText) {
-      const direction = parseWindDirection(windDirText);
-      if (direction >= 0 && direction < 360) {
-        data.windDirection = direction;
-        console.log(`[DEBUG] Parsed wind direction: ${direction}°`);
+      
+      if (typeof data.data.wdc === 'number' && data.data.wdc >= 0 && data.data.wdc < 360) {
+        weatherData.windDirection = Math.round(data.data.wdc); // Wind Direction Current
+        console.log(`[DEBUG] Wind direction: ${data.data.wdc}°`);
       }
+      
+      // Set timestamp and location
+      weatherData.timestamp = data.data.ts || new Date().toISOString();
+      weatherData.location = data.data.loc_name || 'Lymington Starting Platform';
+      
+      console.log(`[DEBUG] Location: ${weatherData.location}, Time: ${weatherData.timestamp}`);
+      console.log(`[DEBUG] Data delay: ${data.data.delay} minutes`);
     }
-    
-    // Parse temperature
-    if (temperatureText) {
-      const temp = parseWeatherValue(temperatureText);
-      if (temp > -50 && temp < 60) { // Reasonable range for UK
-        data.temperature = temp;
-        console.log(`[DEBUG] Parsed temperature: ${temp}°C`);
-      }
-    }
-    
-    // Parse pressure
-    if (pressureText) {
-      const pressure = parseWeatherValue(pressureText);
-      if (pressure > 900 && pressure < 1100) { // Reasonable pressure range
-        data.pressure = pressure;
-        console.log(`[DEBUG] Parsed pressure: ${pressure} hPa`);
-      }
-    }
-    
-    // Parse humidity
-    if (humidityText) {
-      const humidity = parseWeatherValue(humidityText);
-      if (humidity >= 0 && humidity <= 100) {
-        data.humidity = humidity;
-        console.log(`[DEBUG] Parsed humidity: ${humidity}%`);
-      }
-    }
-    
-    // Try to extract timestamp
-    const timestampText = extractTextValue($, [
-      'td:contains("Updated")', 
-      '.timestamp', 
-      '#updated',
-      '[data-field="timestamp"]',
-      'time'
-    ]);
-    
-    if (timestampText) {
-      data.timestamp = timestampText;
-    } else {
-      data.timestamp = new Date().toISOString();
+    else {
+      throw new Error(`Invalid API response structure: ${JSON.stringify(data).substring(0, 100)}`);
     }
     
     const parseTime = Date.now() - parseStart;
-    data.parseTime = parseTime;
+    weatherData.parseTime = parseTime;
     
-    // Validate that we got some useful data
-    data.isValid = (data.windSpeed > 0 || data.temperature > -50 || data.pressure > 0);
+    // Validate that we got some useful wind data (Lymington is wind-focused)
+    weatherData.isValid = (weatherData.windSpeed >= 0 && weatherData.windDirection >= 0);
     
-    console.log(`[DEBUG] Lymington parse completed in ${parseTime}ms, valid: ${data.isValid}`);
+    console.log(`[DEBUG] Lymington parse completed in ${parseTime}ms, valid: ${weatherData.isValid}`);
     
-    if (!data.isValid) {
-      console.warn('[WARNING] No valid weather data found in Lymington HTML');
-      console.log('[DEBUG] HTML content preview:', htmlContent.substring(0, 500));
+    if (!weatherData.isValid) {
+      console.warn('[WARNING] No valid wind data found in Lymington response');
+      console.log('[DEBUG] Data received:', JSON.stringify(data, null, 2));
+    } else {
+      console.log(`[SUCCESS] Parsed wind: ${weatherData.windSpeed.toFixed(2)} m/s, gust: ${weatherData.windGust.toFixed(2)} m/s, dir: ${weatherData.windDirection}°`);
     }
     
     return {
       success: true,
-      data,
+      data: weatherData,
       parseTime
     };
     
@@ -243,72 +290,4 @@ export function parseLymingtonData(htmlContent: string): ParseResult {
       parseTime
     };
   }
-}
-
-/**
- * Extract text value from multiple potential selectors
- */
-function extractTextValue($: cheerio.CheerioAPI, selectors: string[]): string | null {
-  for (const selector of selectors) {
-    const element = $(selector);
-    if (element.length > 0) {
-      const text = element.first().text().trim();
-      if (text && text.length > 0) {
-        console.log(`[DEBUG] Found value "${text}" with selector "${selector}"`);
-        return text;
-      }
-    }
-  }
-  return null;
-}
-
-/**
- * Parse numeric weather value from text (handles various units)
- */
-function parseWeatherValue(text: string): number {
-  // Remove common units and extract number
-  const cleanText = text
-    .replace(/[°C°F°]/g, '')
-    .replace(/\s*(kt|knots?|mph|m\/s|hPa|mb|%)\s*/gi, '')
-    .replace(/[^\d.-]/g, '');
-  
-  const value = parseFloat(cleanText);
-  return isNaN(value) ? 0 : value;
-}
-
-/**
- * Parse wind direction from text (handles compass directions and degrees)
- */
-function parseWindDirection(text: string): number {
-  // First try to extract numeric degrees
-  const degreeMatch = text.match(/(\d+)°?/);
-  if (degreeMatch) {
-    const degrees = parseInt(degreeMatch[1]);
-    if (degrees >= 0 && degrees < 360) {
-      return degrees;
-    }
-  }
-  
-  // Handle compass directions
-  const direction = text.toUpperCase().trim();
-  const compassMap: { [key: string]: number } = {
-    'N': 0, 'NORTH': 0,
-    'NNE': 22, 'NORTH-NORTHEAST': 22,
-    'NE': 45, 'NORTHEAST': 45,
-    'ENE': 67, 'EAST-NORTHEAST': 67,
-    'E': 90, 'EAST': 90,
-    'ESE': 112, 'EAST-SOUTHEAST': 112,
-    'SE': 135, 'SOUTHEAST': 135,
-    'SSE': 157, 'SOUTH-SOUTHEAST': 157,
-    'S': 180, 'SOUTH': 180,
-    'SSW': 202, 'SOUTH-SOUTHWEST': 202,
-    'SW': 225, 'SOUTHWEST': 225,
-    'WSW': 247, 'WEST-SOUTHWEST': 247,
-    'W': 270, 'WEST': 270,
-    'WNW': 292, 'WEST-NORTHWEST': 292,
-    'NW': 315, 'NORTHWEST': 315,
-    'NNW': 337, 'NORTH-NORTHWEST': 337
-  };
-  
-  return compassMap[direction] ?? 0;
 }

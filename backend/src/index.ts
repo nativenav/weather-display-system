@@ -6,6 +6,29 @@ import { fetchTeteDeBalmeWeather, parseTeteDeBalmeData, fetchPlanprazWeather, pa
 import { WeatherResponse, WeatherData, Env } from './types/weather.js';
 import { formatDisplayLines, createCacheKey, generateContentHash } from './utils/helpers.js';
 
+// Endpoint management interfaces
+interface DeviceInfo {
+  deviceId: string;
+  macAddress?: string;
+  lastSeen: string;
+  userAgent: string;
+  ipAddress: string;
+  requestCount: number;
+  isActive: boolean;
+}
+
+interface APIKeyInfo {
+  keyId: string;
+  name: string;
+  key: string;
+  deviceId?: string;
+  createdAt: string;
+  lastUsed: string;
+  requestCount: number;
+  rateLimit: number; // requests per hour
+  isActive: boolean;
+}
+
 /**
  * Main Worker request handler
  */
