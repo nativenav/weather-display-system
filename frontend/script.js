@@ -124,7 +124,7 @@ function displayStations(stations) {
     stations.forEach(station => {
         if (['brambles', 'seaview', 'lymington'].includes(station.id)) {
             regionGroups['Solent'].push(station);
-        } else if (['prarion', 'tete-de-balme', 'planpraz'].includes(station.id)) {
+        } else if (['prarion', 'tetedebalme', 'planpraz'].includes(station.id)) {
             regionGroups['Chamonix'].push(station);
         }
     });
@@ -359,7 +359,7 @@ function displayWeatherData(results) {
         const stationId = result.station.id;
         if (['brambles', 'seaview', 'lymington'].includes(stationId)) {
             regionGroups['Solent'].push(result);
-        } else if (['prarion', 'tete-de-balme', 'planpraz'].includes(stationId)) {
+        } else if (['prarion', 'tetedebalme', 'planpraz'].includes(stationId)) {
             regionGroups['Chamonix'].push(result);
         }
     });
@@ -632,14 +632,19 @@ function displayDevices() {
             lastSeenText = lastSeenTime.toLocaleString();
         }
         
-        // Build station selector options
-        const stationOptions = regions.flatMap(region => 
-            region.stations.map(stationId => 
-                `<option value="${stationId}" ${device.stationId === stationId ? 'selected' : ''}>
-                    ${stationId} (${region.displayName})
-                </option>`
-            )
+        // Build region selector options
+        const regionOptions = regions.map(region => 
+            `<option value="${region.name}" ${device.regionId === region.name ? 'selected' : ''}>
+                ${region.displayName}
+            </option>`
         ).join('');
+        
+        // Get current region display name
+        const currentRegion = regions.find(r => r.name === device.regionId);
+        const regionDisplayName = currentRegion ? currentRegion.displayName : device.regionId || 'Unknown';
+        
+        // Get stations in the current region
+        const regionStations = currentRegion ? currentRegion.stations.join(', ') : 'Unknown';
         
         const isEditing = editingDeviceNickname === device.deviceId;
         
@@ -670,12 +675,12 @@ function displayDevices() {
                 
                 <div class="device-info">
                     <div class="device-info-item">
-                        <div class="device-info-label">Region</div>
-                        <div class="device-info-value">${device.region}</div>
+                        <div class="device-info-label">Assigned Region</div>
+                        <div class="device-info-value">${regionDisplayName}</div>
                     </div>
                     <div class="device-info-item">
-                        <div class="device-info-label">Station</div>
-                        <div class="device-info-value">${device.stationId}</div>
+                        <div class="device-info-label">Stations</div>
+                        <div class="device-info-value" style="font-size: 0.9em;">${regionStations}</div>
                     </div>
                     <div class="device-info-item">
                         <div class="device-info-label">Requests</div>
@@ -688,11 +693,16 @@ function displayDevices() {
                 </div>
                 
                 <div class="device-controls">
-                    <select class="station-select" onchange="updateDeviceStation('${device.deviceId}', this.value)">
-                        ${stationOptions}
-                    </select>
-                    <button class="btn btn-sm btn-identify" onclick="identifyDevice('${device.deviceId}')">🔍 Identify</button>
-                    <button class="btn btn-sm btn-secondary" onclick="refreshDeviceData('${device.deviceId}')">🔄 Refresh</button>
+                    <div class="region-selector-container">
+                        <label for="region-select-${device.deviceId}">Change Region:</label>
+                        <select id="region-select-${device.deviceId}" class="region-select" onchange="updateDeviceRegion('${device.deviceId}', this.value)">
+                            ${regionOptions}
+                        </select>
+                    </div>
+                    <div class="device-actions">
+                        <button class="btn btn-sm btn-identify" onclick="identifyDevice('${device.deviceId}')">🔍 Identify</button>
+                        <button class="btn btn-sm btn-secondary" onclick="refreshDeviceData('${device.deviceId}')">🔄 Refresh</button>
+                    </div>
                 </div>
                 
                 <div class="device-last-seen">
@@ -770,14 +780,14 @@ async function saveDeviceNickname(deviceId, newNickname) {
     }
 }
 
-async function updateDeviceStation(deviceId, newStationId) {
+async function updateDeviceRegion(deviceId, newRegionId) {
     try {
         const response = await fetch(`${API_BASE_URL}/api/v1/devices/${deviceId}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ stationId: newStationId })
+            body: JSON.stringify({ regionId: newRegionId })
         });
         
         if (!response.ok) {
@@ -787,15 +797,19 @@ async function updateDeviceStation(deviceId, newStationId) {
         // Update local device data
         const device = devices.find(d => d.deviceId === deviceId);
         if (device) {
-            device.stationId = newStationId;
+            device.regionId = newRegionId;
         }
         
-        showNotification(`Device station updated to ${newStationId}`, 'success');
+        // Get region display name for notification
+        const region = regions.find(r => r.name === newRegionId);
+        const regionDisplayName = region ? region.displayName : newRegionId;
+        
+        showNotification(`Device region updated to ${regionDisplayName}`, 'success');
         displayDevices();
         
     } catch (error) {
-        console.error('Failed to update device station:', error);
-        showNotification(`Failed to update station: ${error.message}`, 'error');
+        console.error('Failed to update device region:', error);
+        showNotification(`Failed to update region: ${error.message}`, 'error');
     }
 }
 
