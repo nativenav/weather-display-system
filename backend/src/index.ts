@@ -23,121 +23,7 @@ import {
   getAllDevices 
 } from './utils/devices.js';
 
-// Legacy interfaces (keeping for compatibility)
-interface APIKeyInfo {
-  keyId: string;
-  name: string;
-  key: string;
-  deviceId?: string;
-  createdAt: string;
-  lastUsed: string;
-  requestCount: number;
-  rateLimit: number; // requests per hour
-  isActive: boolean;
-}
 
-// ===============================================================================
-// PARSER COMPATIBILITY WRAPPERS
-// ===============================================================================
-
-/**
- * Fetch Prarion weather data (Pioupiou 521)
- */
-async function fetchPrarionWeather() {
-  const PIOUPIOU_URL = 'https://api.pioupiou.fr/v1/live/521';
-  
-  try {
-    const response = await fetch(PIOUPIOU_URL);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    const data = await response.json();
-    return {
-      success: true,
-      data,
-      fetchTime: 0
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      fetchTime: 0
-    };
-  }
-}
-
-/**
- * Parse Prarion weather data
- */
-function parsePrarionData(data: any) {
-  return parsePioupiou521(data);
-}
-
-/**
- * Fetch Tête de Balme weather data (Windbird 1702)
- */
-async function fetchTeteDeBalmeWeather() {
-  const WINDBIRD_URL = 'https://api.windbird.fr/api/v1/stations/1702/data';
-  
-  try {
-    const response = await fetch(WINDBIRD_URL);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    const data = await response.json();
-    return {
-      success: true,
-      data,
-      fetchTime: 0
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      fetchTime: 0
-    };
-  }
-}
-
-/**
- * Parse Tête de Balme weather data
- */
-function parseTeteDeBalmeData(data: any) {
-  return parseWindbird1702(data);
-}
-
-/**
- * Fetch Planpraz weather data (Windbird 1724)
- */
-async function fetchPlanprazWeather() {
-  const WINDBIRD_URL = 'https://api.windbird.fr/api/v1/stations/1724/data';
-  
-  try {
-    const response = await fetch(WINDBIRD_URL);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    const data = await response.json();
-    return {
-      success: true,
-      data,
-      fetchTime: 0
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      fetchTime: 0
-    };
-  }
-}
-
-/**
- * Parse Planpraz weather data
- */
-function parsePlanprazData(data: any) {
-  return parseWindbird1724(data);
-}
 
 /**
  * Main Worker request handler
@@ -885,28 +771,49 @@ async function collectStationData(stationId: string, env: Env): Promise<WeatherR
         }
       }
     } else if (stationId === 'prarion') {
-      const fetchResult = await fetchPrarionWeather();
-      if (fetchResult.success && fetchResult.data) {
-        const parseResult = parsePrarionData(fetchResult.data);
-        if (parseResult.success && parseResult.data) {
-          weatherData = parseResult.data;
+      // Direct Pioupiou 521 API call
+      const PIOUPIOU_URL = 'https://api.pioupiou.fr/v1/live/521';
+      try {
+        const response = await fetch(PIOUPIOU_URL);
+        if (response.ok) {
+          const data = await response.json();
+          const parseResult = parsePioupiou521(data);
+          if (parseResult.success && parseResult.data) {
+            weatherData = parseResult.data;
+          }
         }
+      } catch (error) {
+        console.error(`[ERROR] Failed to fetch Prarion data:`, error);
       }
     } else if (stationId === 'tetedebalme') {
-      const fetchResult = await fetchTeteDeBalmeWeather();
-      if (fetchResult.success && fetchResult.data) {
-        const parseResult = parseTeteDeBalmeData(fetchResult.data);
-        if (parseResult.success && parseResult.data) {
-          weatherData = parseResult.data;
+      // Direct Windbird 1702 API call
+      const WINDBIRD_URL = 'https://api.windbird.fr/api/v1/stations/1702/data';
+      try {
+        const response = await fetch(WINDBIRD_URL);
+        if (response.ok) {
+          const data = await response.json();
+          const parseResult = parseWindbird1702(data);
+          if (parseResult.success && parseResult.data) {
+            weatherData = parseResult.data;
+          }
         }
+      } catch (error) {
+        console.error(`[ERROR] Failed to fetch Tete de Balme data:`, error);
       }
     } else if (stationId === 'planpraz') {
-      const fetchResult = await fetchPlanprazWeather();
-      if (fetchResult.success && fetchResult.data) {
-        const parseResult = parsePlanprazData(fetchResult.data);
-        if (parseResult.success && parseResult.data) {
-          weatherData = parseResult.data;
+      // Direct Windbird 1724 API call
+      const WINDBIRD_URL = 'https://api.windbird.fr/api/v1/stations/1724/data';
+      try {
+        const response = await fetch(WINDBIRD_URL);
+        if (response.ok) {
+          const data = await response.json();
+          const parseResult = parseWindbird1724(data);
+          if (parseResult.success && parseResult.data) {
+            weatherData = parseResult.data;
+          }
         }
+      } catch (error) {
+        console.error(`[ERROR] Failed to fetch Planpraz data:`, error);
       }
     }
     

@@ -4,15 +4,14 @@
 
 A complete weather data collection and display system with cloud backend, web management interface, and ESP32C3 firmware for ePaper displays. Currently monitoring 6 weather stations across UK marine and French alpine locations.
 
-## 🚀 Current Status: **LIVE WITH COMPLETE DEVICE MANAGEMENT**
+## 🚀 Current Status: **LIVE V2.0.0 - STREAMLINED & PRODUCTION-READY**
 
-✅ **Backend**: Deployed Cloudflare Worker with 6 active weather stations + device management API  
-✅ **Frontend**: Live web management interface with full device management capabilities  
-✅ **Device Management**: Auto-registration, identification, real-time status monitoring (DEPLOYED)  
-✅ **Data Sources**: UK marine (3) + French alpine (3) weather stations  
-✅ **API**: Full REST API with device endpoints, caching, and health monitoring (LIVE)  
-✅ **Documentation**: Complete setup and usage guides  
-✅ **Firmware**: ESP32C3 client ready for immediate deployment with WiFi setup
+✅ **Backend v2.0.0**: Streamlined Cloudflare Worker with 6 active stations + device management  
+✅ **Frontend v2.0.0**: Clean web interface with device management via wds.nativenav.com  
+✅ **Firmware v2.0.0**: ESP32C3 three-column ePaper display with backend v2.0.0 compatibility  
+✅ **Data Sources**: UK marine (3) + French alpine (3) weather stations with standardized units  
+✅ **API v2.0.0**: REST endpoints with proper null handling and m/s wind speed standards  
+✅ **Streamlined**: Removed legacy code, test files, and unused deployments for efficiency
 
 ## 🌐 Live System URLs
 
@@ -57,20 +56,35 @@ A complete weather data collection and display system with cloud backend, web ma
 - ✅ **All Marine Stations**: Now providing real-time Solent sailing conditions
 - 🆕 **Frontend v2.0.0**: Updated for backend API v2.0.0 compatibility with standardized wind units and improved null handling
 
-## 🏗️ Project Structure
+## 🏢️ Project Structure (Streamlined v2.0.0)
 ```
 weather-display-system/
-  backend/           # ✅ Cloudflare Workers + KV (deployed)
-    ├── src/parsers/   # Weather station data parsers
-    ├── src/fetchers/  # API clients for weather sources
-    └── src/types/     # TypeScript interfaces
-  frontend/          # ✅ Web management interface (deployed)
-    ├── index.html     # Main management UI
-    ├── styles.css     # Responsive design
-    └── script.js      # API integration
-  firmware/          # ESP32C3 client for ePaper displays
-  docs/              # Architecture docs and station guides
-  schemas/           # Versioned JSON API schemas
+  backend/                    # ✅ Cloudflare Worker (streamlined)
+    ├── src/
+    │   ├── index.ts          # Main worker with direct parser calls
+    │   ├── parsers/          # Weather station parsers (6 stations)
+    │   ├── types/            # TypeScript type definitions
+    │   ├── utils/            # Helper functions and device management
+    │   └── config/           # Region and station configurations
+    └── wrangler.toml         # Cloudflare deployment config
+  
+  frontend/                   # ✅ Cloudflare Pages (streamlined)
+    ├── index.html            # Management interface
+    ├── styles.css            # Clean responsive styling
+    ├── script.js             # API integration
+    └── package.json          # Deployment config
+  
+  firmware/                   # ESP32C3 v2.0.0 firmware
+    └── weather-display-integrated/
+        ├── weather-display-integrated-v2.0.0.ino  # Main firmware
+        ├── config.h          # Configuration
+        ├── driver.h          # ePaper display driver
+        └── secrets.h.example # WiFi credentials template
+  
+  docs/                       # Essential documentation only
+    ├── ADR-0001.md          # Architecture decisions
+    ├── chamonix-stations.md # Station information
+    └── README.md            # Documentation index
 ```
 
 ## 🛠️ Technology Stack
@@ -141,12 +155,12 @@ String getWeatherData(String station) {
 }
 ```
 
-## 📖 Documentation
+## 📜 Documentation
 
 - [Architecture Decisions](docs/ADR-0001.md)
 - [Chamonix Stations Guide](docs/chamonix-stations.md)
 - [Frontend README](frontend/README.md)
-- [API Schema](schemas/weather.v1.json)
+- [Backend API Documentation](backend/README.md)
 
 ## 🔄 Development Status
 
