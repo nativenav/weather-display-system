@@ -453,7 +453,7 @@ function generateWeatherCard(result, windUnit) {
                 <div class="data-item">
                     <div class="data-label">Temperature</div>
                     <div class="data-value">
-                        ${temp.air !== undefined && temp.air !== null && !isNaN(temp.air) && temp.air !== 0 ? temp.air.toFixed(1) : '--'}
+                        ${temp.air !== undefined && temp.air !== null && !isNaN(temp.air) ? temp.air.toFixed(1) : '--'}
                         <span class="data-unit">°C</span>
                     </div>
                 </div>
