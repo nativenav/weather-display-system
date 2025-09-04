@@ -203,6 +203,15 @@ Follows `weather.v1.json` schema:
 }
 ```
 
+## 🚀 ESP32C3 Firmware Integration
+
+**⚠️ IMPORTANT**: When developing ESP32C3 firmware that displays this backend's data:
+- **Use Seeed_GFX library**: https://github.com/Seeed-Studio/Seeed_GFX
+- **NOT standard TFT_eSPI**: Causes compilation errors with ePaper displays
+- **See**: [Development Solutions Notebook](../DEVELOPMENT-SOLUTIONS-NOTEBOOK.md) for details
+- **API Endpoints**: Use region-based `/api/v1/weather/region/{regionId}` for three-column displays
+- **Unit Handling**: Backend returns m/s, convert to regional units (km/h, knots) in firmware
+
 ---
 
 *Built with TypeScript, Cloudflare Workers, and KV storage*

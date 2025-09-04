@@ -32,11 +32,10 @@
   #define EPAPER_BUSY  2   // D2 - BUSY
   #define EPAPER_RST   0   // D0 - RST
   
-  // Include TFT_eSPI configured for ePaper
-  #include <TFT_eSPI.h>
+  // Include Seeed_GFX configured for ePaper (fork of TFT_eSPI with ePaper support)
+  #include <TFT_eSPI.h>  // Seeed_GFX uses same include name
   
-  // Create ePaper display object
-  typedef TFT_eSPI EPaper;
+  // Seeed_GFX already provides EPaper class in Extensions/EPaper.h
   
   // Display refresh settings
   #define USE_FULL_REFRESH true

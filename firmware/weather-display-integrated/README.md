@@ -23,11 +23,31 @@ Complete firmware for XIAO ESP32C3 + 7.5" ePaper weather display with three-colu
 
 ## 📚 Arduino Libraries Required
 
-Install these libraries via Arduino IDE Library Manager:
+**⚠️ CRITICAL**: This project requires **Seeed_GFX**, not the standard TFT_eSPI library!
 
+### Required Libraries:
 1. **ESP32 Board Package** (Espressif Systems)
-2. **ArduinoJson** (by Benoit Blanchon) - v6.x
-3. **Seeed_GFX** - Install from GitHub: https://github.com/Seeed-Studio/Seeed_GFX
+2. **ArduinoJson** (by Benoit Blanchon) - v7.4.2+
+3. **Seeed_GFX** - Essential for ePaper display support
+
+### 🚨 Important Library Installation Notes:
+
+**Seeed_GFX Installation**:
+- Repository: https://github.com/Seeed-Studio/Seeed_GFX
+- This is a **fork of TFT_eSPI** optimized for Seeed XIAO + ePaper displays
+- Includes `EPaper` class with `epaper.update()` method for display refresh
+- Supports UC8179 controller (7.5" ePaper displays)
+
+**Library Conflict Resolution**:
+If you encounter compilation errors like:
+```
+error: 'EPaper' {aka 'class TFT_eSPI'} has no member named 'update'
+```
+
+This means the wrong library is being used. **Solution**:
+1. Uninstall conflicting TFT_eSPI: `arduino-cli lib uninstall TFT_eSPI`
+2. Install Seeed_GFX: `arduino-cli lib install Seeed_GFX`
+3. Verify: `arduino-cli lib list | grep -i "tft\|seeed"` should show only Seeed_GFX
 
 ## ⚙️ Setup Instructions
 

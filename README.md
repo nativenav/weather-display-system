@@ -157,10 +157,12 @@ String getWeatherData(String station) {
 
 ## 📜 Documentation
 
+- [Development Solutions Notebook](DEVELOPMENT-SOLUTIONS-NOTEBOOK.md) **⭐ ESSENTIAL for developers**
 - [Architecture Decisions](docs/ADR-0001.md)
 - [Chamonix Stations Guide](docs/chamonix-stations.md)
 - [Frontend README](frontend/README.md)
 - [Backend API Documentation](backend/README.md)
+- [Firmware README](firmware/weather-display-integrated/README.md)
 
 ## 🔄 Development Status
 
