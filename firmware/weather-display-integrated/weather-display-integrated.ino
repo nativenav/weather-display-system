@@ -91,13 +91,13 @@ void setup() {
   
   // Force serial output even if DEBUG not working
   Serial.println("========================================");
-  Serial.println("  Weather Display Integrated v1.0");
+  Serial.println("  Weather Display Integrated v1.1");
   Serial.println("  XIAO ESP32C3 + 7.5\" ePaper");
   Serial.println("  DEBUG OUTPUT ENABLED");
   Serial.println("========================================");
   
   DEBUG_PRINTLN("========================================");
-  DEBUG_PRINTLN("  Weather Display Integrated v1.0");
+  DEBUG_PRINTLN("  Weather Display Integrated v1.1");
   DEBUG_PRINTLN("  XIAO ESP32C3 + 7.5\" ePaper");
   DEBUG_PRINTLN("========================================");
   
@@ -202,7 +202,7 @@ void initializeDisplay() {
   epaper.setTextSize(1);
   epaper.drawString("MAC: " + deviceMAC, 10, 80);
   epaper.drawString("Device ID: " + deviceId, 10, 100);
-  epaper.drawString("Firmware: v1.0", 10, 400);
+  epaper.drawString("Firmware: v1.1", 10, 400);
   epaper.drawString("Backend: Weather Display System", 10, 420);
   epaper.update();
   
@@ -404,7 +404,7 @@ void drawStatusFooter() {
   epaper.drawString(wifiSignal, 10, 430);
   epaper.drawString(memoryStatus, 150, 430);
   epaper.drawString(shortId, 250, 430);
-  epaper.drawString("v1.0", 350, 430);
+  epaper.drawString("v1.1", 350, 430);
 #endif
 }
 
