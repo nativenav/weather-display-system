@@ -208,12 +208,12 @@ export function formatDisplayLines(data: {
   
   lines.push('');
   
-  // Environmental data
-  if (data.temperature !== undefined && data.temperature > 0) {
+  // Environmental data - show temperature if available (including zero/negative)
+  if (data.temperature !== undefined && data.temperature !== null && !isNaN(data.temperature)) {
     lines.push(`Temp: ${data.temperature.toFixed(1)}°C`);
   }
   
-  if (data.pressure !== undefined && data.pressure > 0) {
+  if (data.pressure !== undefined && data.pressure !== null && data.pressure > 0) {
     lines.push(`Pressure: ${Math.round(data.pressure)} hPa`);
   }
   

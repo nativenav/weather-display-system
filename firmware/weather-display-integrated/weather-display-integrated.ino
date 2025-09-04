@@ -340,9 +340,9 @@ void drawWeatherData() {
     epaper.drawString("WIND GUST: " + String(stations[i].windGust, 1) + " " + stations[i].windUnit, x, y);
     y += 42; // Increased from 35 to 42 (20% more spacing)
     
-    // Temperature (1 decimal, using "deg C") with label - show dashes if not available
+    // Temperature (1 decimal, using "deg C") with label - show dashes if truly not available
     String tempDisplay;
-    if (stations[i].temperature == 0.0 || isnan(stations[i].temperature)) {
+    if (isnan(stations[i].temperature) || stations[i].temperature < -60.0 || stations[i].temperature > 60.0) {
       tempDisplay = "AIR TEMP: -- deg C";
     } else {
       tempDisplay = "AIR TEMP: " + String(stations[i].temperature, 1) + " deg C";

@@ -837,8 +837,12 @@ async function collectStationData(stationId: string, env: Env): Promise<WeatherR
       ttl: 300 // 5 minutes
     };
     
-    // Add optional data if available
-    if (weatherData.temperature > -50) { // Handle alpine temperatures (can be negative)
+    // Add optional data if available - show temperature when valid (including zero/negative)
+    if (weatherData.temperature !== undefined && 
+        weatherData.temperature !== null && 
+        !isNaN(weatherData.temperature) &&
+        weatherData.temperature >= -60 && 
+        weatherData.temperature <= 60) { // Reasonable temperature range
       response.data.temperature = {
         air: weatherData.temperature,
         unit: "celsius"

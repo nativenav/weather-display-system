@@ -1,4 +1,4 @@
-import { WeatherData } from '../types';
+import { WeatherData, validateWeatherData } from '../types';
 
 interface WindbirdLocation {
   latitude: number;
@@ -84,17 +84,14 @@ export function parseWindbird(response: WindbirdResponse, expectedId: number, fa
     throw new Error(`Unexpected station ID: ${data.id}, expected ${expectedId}`);
   }
 
-  // Windbird API returns wind speeds in km/h natively (same as Pioupiou)
-  const windSpeedKmh = measurements.wind_speed_avg;
-  const windGustKmh = measurements.wind_speed_max;
-  
   // Extract altitude from name or use fallback
   const altitude = extractAltitudeFromName(meta.name) || fallbackAltitude || 0;
   
   // Parse timestamp
   const timestamp = new Date(measurements.date);
   
-  return {
+  // Create raw weather data object (will be validated and sanitized)
+  const rawData: Partial<WeatherData> = {
     station_id: `windbird-${data.id}`,
     station_name: meta.name || `Windbird ${data.id}`,
     location: {
@@ -105,26 +102,27 @@ export function parseWindbird(response: WindbirdResponse, expectedId: number, fa
     timestamp: timestamp.toISOString(),
     temperature: null, // Windbird stations only measure wind
     humidity: null,
-    pressure: measurements.pressure,
-    wind_speed: Math.round(windSpeedKmh * 10) / 10, // Round to 1 decimal
-    wind_gust: Math.round(windGustKmh * 10) / 10,
-    wind_direction: measurements.wind_heading,
-    wind_direction_text: degreesToCardinal(measurements.wind_heading),
+    pressure: measurements.pressure, // Will be validated (null if invalid)
+    wind_speed: measurements.wind_speed_avg, // km/h, will be validated
+    wind_gust: measurements.wind_speed_max, // km/h, will be validated 
+    wind_direction: measurements.wind_heading, // Will be validated and normalized
     precipitation: null, // Not provided by Windbird
-    weather_description: `Wind ${degreesToCardinal(measurements.wind_heading)} ${Math.round(windSpeedKmh)} km/h`,
     data_source: 'windbird',
     raw_data: {
       station_status: status.state,
       signal_strength: status.snr,
-      wind_speed_min_ms: measurements.wind_speed_min,
-      wind_speed_avg_ms: measurements.wind_speed_avg,
-      wind_speed_max_ms: measurements.wind_speed_max,
+      wind_speed_min_kmh: measurements.wind_speed_min,
+      wind_speed_avg_kmh: measurements.wind_speed_avg,
+      wind_speed_max_kmh: measurements.wind_speed_max,
       location_accuracy: location.hdop,
       location_success: location.success,
       last_location_update: location.date,
       station_description: meta.description
     }
   };
+  
+  // Use upstream validation to ensure consistent data handling
+  return validateWeatherData(rawData);
 }
 
 /**

@@ -1,4 +1,4 @@
-import { WeatherData } from '../types';
+import { WeatherData, validateWeatherData } from '../types';
 
 interface PioupiouLocation {
   latitude: number;
@@ -76,14 +76,11 @@ export function parsePioupiou521(response: PioupiouResponse): WeatherData {
     throw new Error(`Unexpected station ID: ${data.id}, expected 521`);
   }
 
-  // Pioupiou API returns wind speeds in km/h natively
-  const windSpeedKmh = measurements.wind_speed_avg;
-  const windGustKmh = measurements.wind_speed_max;
-  
   // Parse timestamp
   const timestamp = new Date(measurements.date);
   
-  return {
+  // Create raw weather data object (will be validated and sanitized)
+  const rawData: Partial<WeatherData> = {
     station_id: `pioupiou-${data.id}`,
     station_name: meta.name || `Pioupiou ${data.id}`,
     location: {
@@ -94,24 +91,25 @@ export function parsePioupiou521(response: PioupiouResponse): WeatherData {
     timestamp: timestamp.toISOString(),
     temperature: null, // Pioupiou stations only measure wind
     humidity: null,
-    pressure: measurements.pressure,
-    wind_speed: Math.round(windSpeedKmh * 10) / 10, // Round to 1 decimal
-    wind_gust: Math.round(windGustKmh * 10) / 10,
-    wind_direction: measurements.wind_heading,
-    wind_direction_text: degreesToCardinal(measurements.wind_heading),
+    pressure: measurements.pressure, // Will be validated (null if invalid)
+    wind_speed: measurements.wind_speed_avg, // km/h, will be validated
+    wind_gust: measurements.wind_speed_max, // km/h, will be validated
+    wind_direction: measurements.wind_heading, // Will be validated and normalized
     precipitation: null, // Not provided by Pioupiou
-    weather_description: `Wind ${degreesToCardinal(measurements.wind_heading)} ${Math.round(windSpeedKmh)} km/h`,
     data_source: 'pioupiou',
     raw_data: {
       station_status: status.state,
       signal_strength: status.snr,
-      wind_speed_min_ms: measurements.wind_speed_min,
-      wind_speed_avg_ms: measurements.wind_speed_avg,
-      wind_speed_max_ms: measurements.wind_speed_max,
+      wind_speed_min_kmh: measurements.wind_speed_min,
+      wind_speed_avg_kmh: measurements.wind_speed_avg,
+      wind_speed_max_kmh: measurements.wind_speed_max,
       location_accuracy: location.hdop,
       location_success: location.success,
       last_location_update: location.date,
       station_description: meta.description
     }
   };
+  
+  // Use upstream validation to ensure consistent data handling
+  return validateWeatherData(rawData);
 }
