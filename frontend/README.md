@@ -35,6 +35,7 @@ This is the comprehensive management interface for the Weather Display System. I
 - **Real-time Updates**: Auto-refreshes every minute
 - **Manual Refresh**: Instantly refresh weather data display
 - **Multi-station View**: See data from UK marine stations (Brambles, Seaview, Lymington) and French alpine stations (Prarion, Tête de Balme, Planpraz)
+- **v2.0.0 Compatible**: Updated for backend API v2.0.0 with standardized wind units (m/s) and improved null value handling
 
 ## 📍 Supported Weather Stations
 
@@ -187,5 +188,14 @@ wrangler pages deploy . --project-name=weather-display-blue
 
 The interface is responsive and works well on mobile devices for remote monitoring and management of your weather stations.
 
+## 🔄 Version History
+
+### Frontend v2.0.0 (September 2025)
+- **Backend Compatibility**: Updated for backend API v2.0.0 standardization
+- **Wind Units**: All wind speeds now assumed to be in m/s from backend (with frontend unit conversion)
+- **Null Handling**: Improved handling of null/missing weather data with "N/A" displays
+- **Gust Data**: Enhanced gust display with explanatory notes when only instantaneous readings available
+- **Cache Busting**: Added version parameters to ensure users receive updated code
+
 ---
-*Weather Display System v0.1.0*
+*Weather Display System Frontend v2.0.0*

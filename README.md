@@ -51,10 +51,11 @@ A complete weather data collection and display system with cloud backend, web ma
 | **Tête de Balme** | Chamonix, France (2,204m) | ✅ **LIVE** | Windbird 1702 | Alpine wind data |
 | **Planpraz** | Chamonix, France (1,958m) | ✅ **LIVE** | Windbird 1724 | Alpine wind data |
 
-### Recent Fixes (September 2025)
+### Recent Updates (September 2025)
 - 🔧 **Lymington**: Fixed WeatherFile.com API integration with V03 endpoints
 - 🔧 **Seaview**: Implemented proper Navis session management with hex parsing
 - ✅ **All Marine Stations**: Now providing real-time Solent sailing conditions
+- 🆕 **Frontend v2.0.0**: Updated for backend API v2.0.0 compatibility with standardized wind units and improved null handling
 
 ## 🏗️ Project Structure
 ```

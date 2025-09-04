@@ -406,24 +406,14 @@ function generateWeatherCard(result, windUnit) {
     const temp = data.data.temperature || {};
     const pressure = data.data.pressure || {};
     
-    // Backend already sends wind speeds in regional units, detect the backend unit
-    let backendUnit = 'ms'; // default fallback
-    if (wind.unit) {
-        // Backend provides the unit it's sending
-        backendUnit = wind.unit === 'kt' ? 'kts' : (wind.unit === 'km/h' ? 'kph' : 'ms');
-    } else {
-        // Legacy fallback: determine from station type
-        const stationId = station.id;
-        if (['prarion', 'tetedebalme', 'planpraz'].includes(stationId)) {
-            backendUnit = 'kph'; // Chamonix stations send km/h
-        } else if (['brambles', 'seaview', 'lymington'].includes(stationId)) {
-            backendUnit = 'kts'; // Solent stations send knots
-        }
-    }
+    // Backend v2.0.0 always sends wind speeds in m/s - no unit detection needed
+    const backendUnit = 'ms'; // Backend standardized to meters per second
     
-    // Convert from backend unit to user-selected display unit
-    const windSpeedAvg = wind.avg ? convertWindSpeed(wind.avg, backendUnit, windUnit) : null;
-    const windSpeedGust = wind.gust ? convertWindSpeed(wind.gust, backendUnit, windUnit) : null;
+    // Convert from m/s to user-selected display unit with proper null checking
+    const windSpeedAvg = (wind.avg !== null && wind.avg !== undefined) ? 
+        convertWindSpeed(wind.avg, backendUnit, windUnit) : null;
+    const windSpeedGust = (wind.gust !== null && wind.gust !== undefined) ? 
+        convertWindSpeed(wind.gust, backendUnit, windUnit) : null;
     const unitLabel = getWindUnitLabel(windUnit);
     
     return `
@@ -440,8 +430,9 @@ function generateWeatherCard(result, windUnit) {
                 <div class="data-item">
                     <div class="data-label">Wind Gust</div>
                     <div class="data-value">
-                        ${windSpeedGust ? windSpeedGust.toFixed(1) : '--'}
-                        <span class="data-unit">${unitLabel}</span>
+                        ${windSpeedGust !== null ? windSpeedGust.toFixed(1) : 'N/A'}
+                        <span class="data-unit">${windSpeedGust !== null ? unitLabel : ''}</span>
+                        ${windSpeedGust === null ? '<div class="data-note">Instantaneous only</div>' : ''}
                     </div>
                 </div>
                 <div class="data-item">

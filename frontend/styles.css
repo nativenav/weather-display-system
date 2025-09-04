@@ -826,6 +826,13 @@ input:checked + .slider:before {
     margin-left: 2px;
 }
 
+.data-note {
+    font-size: 0.75em;
+    color: #999;
+    font-style: italic;
+    margin-top: 2px;
+}
+
 /* Actions */
 .actions {
     margin-top: 2rem;
