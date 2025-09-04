@@ -84,9 +84,9 @@ export function parseWindbird(response: WindbirdResponse, expectedId: number, fa
     throw new Error(`Unexpected station ID: ${data.id}, expected ${expectedId}`);
   }
 
-  // Convert wind speed from m/s to km/h (Windbird API returns m/s like Pioupiou)
-  const windSpeedKmh = measurements.wind_speed_avg * 3.6;
-  const windGustKmh = measurements.wind_speed_max * 3.6;
+  // Windbird API returns wind speeds in km/h natively (same as Pioupiou)
+  const windSpeedKmh = measurements.wind_speed_avg;
+  const windGustKmh = measurements.wind_speed_max;
   
   // Extract altitude from name or use fallback
   const altitude = extractAltitudeFromName(meta.name) || fallbackAltitude || 0;

@@ -76,9 +76,9 @@ export function parsePioupiou521(response: PioupiouResponse): WeatherData {
     throw new Error(`Unexpected station ID: ${data.id}, expected 521`);
   }
 
-  // Convert wind speed from m/s to km/h (Pioupiou API returns m/s)
-  const windSpeedKmh = measurements.wind_speed_avg * 3.6;
-  const windGustKmh = measurements.wind_speed_max * 3.6;
+  // Pioupiou API returns wind speeds in km/h natively
+  const windSpeedKmh = measurements.wind_speed_avg;
+  const windGustKmh = measurements.wind_speed_max;
   
   // Parse timestamp
   const timestamp = new Date(measurements.date);
