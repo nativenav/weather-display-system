@@ -109,6 +109,10 @@ id = "your-kv-namespace-id"
 
 [triggers]
 crons = ["*/5 * * * *"]  # Every 5 minutes
+
+[vars]
+ENVIRONMENT = "production"
+# Note: No API keys required - system uses public weather APIs
 ```
 
 ## 📊 Monitoring
