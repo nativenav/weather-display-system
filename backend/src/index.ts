@@ -349,8 +349,8 @@ async function handleStationsRequest(corsHeaders: Record<string, string>): Promi
       id: 'seaview',
       name: 'Seaview',
       location: 'Isle of Wight, UK',
-      description: 'Navis live marine weather data',
-      refreshInterval: 2, // minutes
+      description: 'Navis live marine weather data with enhanced gust calculation',
+      refreshInterval: 2, // minutes (most responsive station)
       status: 'active'
     },
     {
@@ -768,7 +768,7 @@ async function collectStationData(stationId: string, env: Env): Promise<WeatherR
     } else if (stationId === 'seaview') {
       const fetchResult = await fetchSeaviewWeather();
       if (fetchResult.success && fetchResult.data) {
-        const parseResult = parseSeaviewData(fetchResult.data);
+        const parseResult = parseSeaviewData(fetchResult.data, (fetchResult as any).dataType);
         if (parseResult.success && parseResult.data) {
           weatherData = parseResult.data;
         }
@@ -812,26 +812,17 @@ async function collectStationData(stationId: string, env: Env): Promise<WeatherR
       return null;
     }
     
-    // Determine region for unit conversion
-    const region = getRegionForStation(stationId);
-    
-    // Convert wind speeds to regional units
-    const windSpeedConverted = convertWindSpeedForRegion(weatherData.windSpeed, region || 'unknown');
-    const windGustConverted = weatherData.windGust > 0 ? 
-      convertWindSpeedForRegion(weatherData.windGust, region || 'unknown') : null;
-    
-    // Convert to standardized response format with regional units
+    // Convert to standardized response format (always m/s for JSON)
     const response: WeatherResponse = {
       schema: "weather.v1",
       stationId,
       timestamp: new Date().toISOString(),
       data: {
         wind: {
-          avg: windSpeedConverted.value,
-          gust: windGustConverted ? windGustConverted.value : undefined,
+          avg: weatherData.windSpeed || 0, // Default to 0 if null (TODO: handle better)
+          gust: weatherData.windGust || undefined, // Omit if null
           direction: weatherData.windDirection,
-          unit: windSpeedConverted.unit === 'kt' ? 'kt' : 
-                windSpeedConverted.unit === 'km/h' ? 'km/h' : 'm/s'
+          unit: "mps" // Always m/s for JSON endpoints
         }
       },
       ttl: 300 // 5 minutes
@@ -934,7 +925,7 @@ async function handleCreateDeviceRequest(
   corsHeaders: Record<string, string>
 ): Promise<Response> {
   try {
-    const body = await request.json();
+    const body = await request.json() as any;
     const deviceInfo = extractDeviceInfo(request);
     
     // Get MAC address from header or body
@@ -988,13 +979,12 @@ async function handleCreateDeviceRequest(
       success: true,
       deviceId: device.deviceId,
       nickname: device.nickname,
-      stationId: device.stationId,
-      region: device.region,
+      regionId: device.regionId,
       message: 'Device registered successfully',
       isNewDevice: true
     };
     
-    console.log(`[INFO] New device registered: ${deviceId} -> ${device.stationId}`);
+    console.log(`[INFO] New device registered: ${deviceId} -> ${device.regionId}`);
     
     return new Response(JSON.stringify(response, null, 2), {
       status: 201,
@@ -1107,7 +1097,7 @@ async function handleUpdateDeviceRequest(
   }
   
   try {
-    const body = await request.json();
+    const body = await request.json() as any;
     const device = await getDevice(deviceId, env);
     
     if (!device) {

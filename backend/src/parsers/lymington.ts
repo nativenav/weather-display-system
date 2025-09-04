@@ -180,17 +180,17 @@ export function parseLymingtonData(data: any): ParseResult {
   console.log('[INFO] Parsing Lymington weather data...');
   
   try {
-    // Initialize weather data
+    // Initialize weather data (all null for missing data)
     const weatherData: WeatherData = {
       temperature: null, // Lymington is wind-only, no temperature data
-      humidity: 0.0,
-      pressure: 0.0,
-      windSpeed: 0.0,
-      windGust: 0.0,
-      windDirection: 0,
-      visibility: 0.0,
-      uvIndex: 0.0,
-      precipitation: 0.0,
+      humidity: null,
+      pressure: null,
+      windSpeed: null,
+      windGust: null,
+      windDirection: null,
+      visibility: null,
+      uvIndex: null,
+      precipitation: null,
       conditions: '',
       timestamp: '',
       location: 'Lymington Starting Platform',
@@ -239,8 +239,8 @@ export function parseLymingtonData(data: any): ParseResult {
       // Extract current wind data (API returns in m/s as per documentation)
       if (typeof data.data.wsc === 'number' && data.data.wsc >= 0) {
         weatherData.windSpeed = data.data.wsc; // Already in m/s
-        weatherData.windGust = data.data.wsc; // Current reading, no separate gust
-        console.log(`[DEBUG] Current wind speed: ${data.data.wsc} m/s`);
+        weatherData.windGust = null; // Current reading, no gust data available
+        console.log(`[DEBUG] Current wind speed: ${data.data.wsc} m/s (no gust data)`);
       }
       
       if (typeof data.data.wdc === 'number' && data.data.wdc >= 0 && data.data.wdc < 360) {
@@ -263,7 +263,8 @@ export function parseLymingtonData(data: any): ParseResult {
     weatherData.parseTime = parseTime;
     
     // Validate that we got some useful wind data (Lymington is wind-focused)
-    weatherData.isValid = (weatherData.windSpeed >= 0 && weatherData.windDirection >= 0);
+    weatherData.isValid = ((weatherData.windSpeed !== null && weatherData.windSpeed >= 0) && 
+                           (weatherData.windDirection !== null && weatherData.windDirection >= 0));
     
     console.log(`[DEBUG] Lymington parse completed in ${parseTime}ms, valid: ${weatherData.isValid}`);
     
@@ -271,7 +272,8 @@ export function parseLymingtonData(data: any): ParseResult {
       console.warn('[WARNING] No valid wind data found in Lymington response');
       console.log('[DEBUG] Data received:', JSON.stringify(data, null, 2));
     } else {
-      console.log(`[SUCCESS] Parsed wind: ${weatherData.windSpeed.toFixed(2)} m/s, gust: ${weatherData.windGust.toFixed(2)} m/s, dir: ${weatherData.windDirection}°`);
+      const gustStr = weatherData.windGust !== null ? `${weatherData.windGust.toFixed(2)} m/s` : 'n/a';
+      console.log(`[SUCCESS] Parsed wind: ${weatherData.windSpeed!.toFixed(2)} m/s, gust: ${gustStr}, dir: ${weatherData.windDirection}°`);
     }
     
     return {

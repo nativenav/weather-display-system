@@ -162,7 +162,7 @@ export function convertWindSpeedForRegion(speedMps: number, region: string): { v
     // Solent marine stations: convert to knots
     return {
       value: parseFloat((speedMps * 1.94384).toFixed(1)),
-      unit: 'kt'
+      unit: 'kts'
     };
   } else if (region === 'chamonix') {
     // Chamonix alpine stations: convert to km/h

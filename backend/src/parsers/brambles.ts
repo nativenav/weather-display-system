@@ -66,17 +66,17 @@ export function parseBramblesData(htmlData: string): ParseResult {
   console.log('[INFO] Parsing Brambles weather data...');
   
   try {
-    // Initialize weather data (matching C++ initializeWeatherData)
+    // Initialize weather data (all null for missing data)
     const data: WeatherData = {
-      temperature: 0.0,
-      humidity: 0.0,
-      pressure: 0.0,
-      windSpeed: 0.0,
-      windGust: 0.0,
-      windDirection: 0,
-      visibility: 0.0,
-      uvIndex: 0.0,
-      precipitation: 0.0,
+      temperature: null,
+      humidity: null,
+      pressure: null,
+      windSpeed: null,
+      windGust: null,
+      windDirection: null,
+      visibility: null,
+      uvIndex: null,
+      precipitation: null,
       conditions: '',
       timestamp: '',
       location: 'Brambles Bank',
@@ -110,12 +110,22 @@ export function parseBramblesData(htmlData: string): ParseResult {
     console.log(`[DEBUG] Wind Direction: ${data.windDirection} degrees`);
     
     // Extract air temperature: <td>Air Temp</td><td>19.9 C</td>
-    data.temperature = extractFloatFromTableCell($, 'Air Temp');
-    console.log(`[DEBUG] Temperature: ${data.temperature.toFixed(1)}°C`);
+    const tempValue = extractFloatFromTableCell($, 'Air Temp');
+    if (tempValue !== 0.0) {
+      data.temperature = tempValue;
+      console.log(`[DEBUG] Temperature: ${data.temperature.toFixed(1)}°C`);
+    } else {
+      console.log('[DEBUG] Temperature: n/a');
+    }
     
     // Extract pressure in mBar: <td>Pressure</td><td>1017.6 mBar</td>
-    data.pressure = extractFloatFromTableCell($, 'Pressure');
-    console.log(`[DEBUG] Pressure: ${data.pressure.toFixed(1)} mBar (${data.pressure.toFixed(1)} hPa)`);
+    const pressureValue = extractFloatFromTableCell($, 'Pressure');
+    if (pressureValue !== 0.0) {
+      data.pressure = pressureValue;
+      console.log(`[DEBUG] Pressure: ${data.pressure.toFixed(1)} mBar (${data.pressure.toFixed(1)} hPa)`);
+    } else {
+      console.log('[DEBUG] Pressure: n/a');
+    }
     
     // Extract timestamp: <td>Updated</td><td>18/08/2025 18:13:00</td>
     const timestamp = extractStringFromTableCell($, 'Updated');
@@ -129,7 +139,9 @@ export function parseBramblesData(htmlData: string): ParseResult {
     // Calculate parse time and validity (matching C++ logic)
     const parseTime = Date.now() - parseStart;
     data.parseTime = parseTime;
-    data.isValid = (data.windSpeed > 0 || data.windDirection > 0 || data.temperature > 0);
+    data.isValid = ((data.windSpeed !== null && data.windSpeed > 0) || 
+                    (data.windDirection !== null && data.windDirection >= 0) || 
+                    (data.temperature !== null && data.temperature > -50));
     
     console.log(`[DEBUG] Parse completed in ${parseTime}ms, valid: ${data.isValid}`);
     

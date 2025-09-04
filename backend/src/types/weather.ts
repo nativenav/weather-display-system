@@ -1,22 +1,23 @@
 // Weather data types based on the original C++ WeatherData structure
 export interface WeatherData {
-  temperature: number;      // Temperature in Celsius
-  humidity: number;         // Relative humidity percentage  
-  pressure: number;         // Atmospheric pressure in hPa
-  windSpeed: number;        // Wind speed in m/s
-  windGust: number;         // Wind gust speed in m/s
-  windDirection: number;    // Wind direction in degrees (0-359)
-  visibility: number;       // Visibility in kilometers
-  uvIndex: number;          // UV index
-  precipitation: number;    // Precipitation in mm
-  conditions: string;       // Weather conditions description
-  timestamp: string;        // ISO 8601 timestamp
-  location: string;         // Location name or coordinates
-  isValid: boolean;         // Data validity flag
-  parseTime: number;        // Time taken to parse in milliseconds
+  temperature: number | null;      // Temperature in Celsius (null = no data)
+  humidity: number | null;         // Relative humidity percentage (null = no data)
+  pressure: number | null;         // Atmospheric pressure in hPa (null = no data)
+  windSpeed: number | null;        // Wind speed in m/s (null = no data)
+  windGust: number | null;         // Wind gust speed in m/s (null = no data)
+  windDirection: number | null;    // Wind direction in degrees 0-359 (null = no data)
+  visibility: number | null;       // Visibility in kilometers (null = no data)
+  uvIndex: number | null;          // UV index (null = no data)
+  precipitation: number | null;    // Precipitation in mm (null = no data)
+  conditions: string;              // Weather conditions description
+  timestamp: string;               // ISO 8601 timestamp
+  location: string;                // Location name or coordinates
+  isValid: boolean;                // Data validity flag
+  parseTime: number;               // Time taken to parse in milliseconds
 }
 
 // Standardized API response format (matches our JSON schema v1)
+// All JSON endpoints return data in m/s ("mps" unit)
 export interface WeatherResponse {
   schema: "weather.v1";
   stationId: string;
@@ -24,9 +25,9 @@ export interface WeatherResponse {
   data: {
     wind: {
       avg: number;
-      gust?: number;
-      direction: number;
-      unit: "mps" | "kts";
+      gust?: number;  // Omitted if null/unavailable
+      direction: number | null;  // Null if no direction data
+      unit: "mps";  // Always "mps" for JSON endpoints
     };
     temperature?: {
       air: number;

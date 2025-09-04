@@ -1,6 +1,17 @@
 # Weather Backend - Cloudflare Workers
 
-🚀 **Status**: **PRODUCTION DEPLOYED** at https://weather-backend.nativenav.workers.dev
+🚀 **Status**: **PRODUCTION DEPLOYED** at https://weather-backend.nativenav.workers.dev  
+**Version**: v2.0.0 🆕 **Standardized Parsers**
+
+## 🚨 v2.0.0 Breaking Changes
+
+**Parser System Overhaul** - All weather parsers have been standardized:
+- ✅ **Wind speeds now in m/s** (meters per second) across all stations
+- ✅ **Proper null handling** - missing data is `null`, not `0`
+- ✅ **Enhanced gust accuracy** - `null` when only instantaneous data available
+- ✅ **Legacy code removed** - cleaner, more maintainable codebase
+
+**Migration Required**: Frontend and firmware need updates for new data format. See [`CHANGELOG.md`](./CHANGELOG.md)
 
 Cloudflare Workers backend serving weather data from 6 active stations with KV caching, cron collection, and configuration management.
 
@@ -62,17 +73,19 @@ Cloudflare Workers backend serving weather data from 6 active stations with KV c
 ```
 src/
 ├── index.ts           # Main Worker with routing
-├── types/weather.ts   # TypeScript interfaces
-├── parsers/           # Station-specific data parsers
-│   ├── brambles.ts    # Southampton VTS parser
-│   ├── seaview.ts     # Navis live data parser
-│   ├── lymington.ts   # Harbour weather parser
-│   ├── pioupiou-legacy.ts  # Pioupiou wind station
-│   └── windbird-legacy.ts  # Windbird stations
+├── types/             # TypeScript interfaces
+│   ├── weather.ts     # Weather data types
+│   └── devices.ts     # Device configuration types
+├── parsers/           # Station-specific data parsers (v2.0 standardized)
+│   ├── brambles.ts    # Southampton VTS parser (knots → m/s)
+│   ├── seaview.ts     # Navis live data parser (knots → m/s)
+│   ├── lymington.ts   # Harbour weather parser (m/s native)
+│   ├── pioupiou.ts    # Pioupiou wind station (km/h → m/s)
+│   └── windbird.ts    # Windbird stations (km/h → m/s)
 ├── fetchers/          # HTTP clients for data sources
 │   ├── pioupiou.ts    # Pioupiou API client
 │   └── windbird.ts    # Windbird API client
-└── utils/helpers.ts   # Utilities and formatting
+└── utils/helpers.ts   # Utilities and unit conversion
 ```
 
 ### Features Implemented
