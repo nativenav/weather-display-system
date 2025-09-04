@@ -1,8 +1,8 @@
 import { fetchBramblesWeather, parseBramblesData } from './parsers/brambles.js';
 import { fetchSeaviewWeather, parseSeaviewData } from './parsers/seaview.js';
 import { fetchLymingtonWeather, parseLymingtonData } from './parsers/lymington.js';
-import { fetchPrarionWeather, parsePrarionData } from './parsers/pioupiou-legacy.js';
-import { fetchTeteDeBalmeWeather, parseTeteDeBalmeData, fetchPlanprazWeather, parsePlanprazData } from './parsers/windbird-legacy.js';
+import { parsePioupiou521 } from './parsers/pioupiou.js';
+import { parseWindbird1702, parseWindbird1724 } from './parsers/windbird.js';
 import { WeatherResponse, RegionWeatherResponse, WeatherData, Env } from './types/weather.js';
 import { formatDisplayLines, createCacheKey, generateContentHash, convertWindSpeedForRegion } from './utils/helpers.js';
 
@@ -34,6 +34,109 @@ interface APIKeyInfo {
   requestCount: number;
   rateLimit: number; // requests per hour
   isActive: boolean;
+}
+
+// ===============================================================================
+// PARSER COMPATIBILITY WRAPPERS
+// ===============================================================================
+
+/**
+ * Fetch Prarion weather data (Pioupiou 521)
+ */
+async function fetchPrarionWeather() {
+  const PIOUPIOU_URL = 'https://api.pioupiou.fr/v1/live/521';
+  
+  try {
+    const response = await fetch(PIOUPIOU_URL);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const data = await response.json();
+    return {
+      success: true,
+      data,
+      fetchTime: 0
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      fetchTime: 0
+    };
+  }
+}
+
+/**
+ * Parse Prarion weather data
+ */
+function parsePrarionData(data: any) {
+  return parsePioupiou521(data);
+}
+
+/**
+ * Fetch Tête de Balme weather data (Windbird 1702)
+ */
+async function fetchTeteDeBalmeWeather() {
+  const WINDBIRD_URL = 'https://api.windbird.fr/api/v1/stations/1702/data';
+  
+  try {
+    const response = await fetch(WINDBIRD_URL);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const data = await response.json();
+    return {
+      success: true,
+      data,
+      fetchTime: 0
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      fetchTime: 0
+    };
+  }
+}
+
+/**
+ * Parse Tête de Balme weather data
+ */
+function parseTeteDeBalmeData(data: any) {
+  return parseWindbird1702(data);
+}
+
+/**
+ * Fetch Planpraz weather data (Windbird 1724)
+ */
+async function fetchPlanprazWeather() {
+  const WINDBIRD_URL = 'https://api.windbird.fr/api/v1/stations/1724/data';
+  
+  try {
+    const response = await fetch(WINDBIRD_URL);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const data = await response.json();
+    return {
+      success: true,
+      data,
+      fetchTime: 0
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      fetchTime: 0
+    };
+  }
+}
+
+/**
+ * Parse Planpraz weather data
+ */
+function parsePlanprazData(data: any) {
+  return parseWindbird1724(data);
 }
 
 /**
