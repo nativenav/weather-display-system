@@ -430,9 +430,8 @@ function generateWeatherCard(result, windUnit) {
                 <div class="data-item">
                     <div class="data-label">Wind Gust</div>
                     <div class="data-value">
-                        ${windSpeedGust !== null ? windSpeedGust.toFixed(1) : 'N/A'}
+                        ${windSpeedGust !== null ? windSpeedGust.toFixed(1) : '--'}
                         <span class="data-unit">${windSpeedGust !== null ? unitLabel : ''}</span>
-                        ${windSpeedGust === null ? '<div class="data-note">Instantaneous only</div>' : ''}
                     </div>
                 </div>
                 <div class="data-item">
