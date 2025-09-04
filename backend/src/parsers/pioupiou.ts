@@ -13,8 +13,8 @@ interface PioupiouMeasurements {
   pressure?: number | null;
   wind_heading: number;
   wind_speed_avg: number;
-  wind_speed_max: number;
-  wind_speed_min: number;
+  wind_speed_max: number | null;
+  wind_speed_min: number | null;
 }
 
 interface PioupiouStatus {
@@ -67,24 +67,26 @@ function kmhToMeterPerSecond(kmh: number): number {
 }
 
 /**
- * Parse Pioupiou API response for station 521 (Prarion, Les Houches)
+ * Parse Pioupiou API response for any station (521, 1702, 1724)
  */
 export function parsePioupiou521(response: PioupiouResponse): ParseResult {
   const parseStart = Date.now();
-  console.log('[INFO] Parsing Pioupiou 521 weather data...');
   
   try {
     const { data } = response;
     const { measurements, location, meta, status } = data;
+    
+    console.log(`[INFO] Parsing Pioupiou station ${data.id} weather data...`);
 
     // Basic validation
     if (!measurements || !location || measurements.wind_speed_avg == null) {
       throw new Error('Invalid Pioupiou data: missing required measurements');
     }
 
-    // Ensure we're getting data from the expected station
-    if (data.id !== 521) {
-      throw new Error(`Unexpected station ID: ${data.id}, expected 521`);
+    // Validate station ID is a known Pioupiou station (521, 1702, 1724)
+    const validStationIds = [521, 1702, 1724];
+    if (!validStationIds.includes(data.id)) {
+      throw new Error(`Unknown Pioupiou station ID: ${data.id}, expected one of: ${validStationIds.join(', ')}`);
     }
 
     // Initialize weather data (all null for missing data)
@@ -130,10 +132,12 @@ export function parsePioupiou521(response: PioupiouResponse): ParseResult {
       console.log(`[DEBUG] Pressure: ${weatherData.pressure} hPa`);
     }
     
-    // Set conditions with location info
+    // Set conditions with location info and determine altitude based on station
+    const altitudes = { 521: '1865m', 1702: '2204m', 1724: '1958m' };
+    const altitude = altitudes[data.id as keyof typeof altitudes] || 'unknown';
     const directionText = weatherData.windDirection !== null ? degreesToCardinal(weatherData.windDirection) : 'N/A';
     const windSpeedText = weatherData.windSpeed !== null ? weatherData.windSpeed.toFixed(1) : '0.0';
-    weatherData.conditions = `Wind ${directionText} ${windSpeedText} m/s (Altitude: 1865m)`;
+    weatherData.conditions = `Wind ${directionText} ${windSpeedText} m/s (Altitude: ${altitude})`;
     
     // Calculate parse time and validity
     const parseTime = Date.now() - parseStart;
@@ -141,10 +145,10 @@ export function parsePioupiou521(response: PioupiouResponse): ParseResult {
     weatherData.isValid = ((weatherData.windSpeed !== null && weatherData.windSpeed >= 0) && 
                            (weatherData.windDirection !== null && weatherData.windDirection >= 0));
     
-    console.log(`[DEBUG] Pioupiou 521 parse completed in ${parseTime}ms, valid: ${weatherData.isValid}`);
+    console.log(`[DEBUG] Pioupiou ${data.id} parse completed in ${parseTime}ms, valid: ${weatherData.isValid}`);
     
     if (!weatherData.isValid) {
-      console.warn('[WARNING] No valid wind data found in Pioupiou 521 response');
+      console.warn(`[WARNING] No valid wind data found in Pioupiou ${data.id} response`);
     } else {
       const gustStr = weatherData.windGust !== null ? `${weatherData.windGust.toFixed(1)} m/s` : 'n/a';
       console.log(`[SUCCESS] Parsed wind: ${weatherData.windSpeed!.toFixed(1)} m/s, gust: ${gustStr}, dir: ${weatherData.windDirection}°`);
@@ -158,7 +162,7 @@ export function parsePioupiou521(response: PioupiouResponse): ParseResult {
     
   } catch (error) {
     const parseTime = Date.now() - parseStart;
-    console.error('[ERROR] Pioupiou 521 parsing failed:', error);
+    console.error('[ERROR] Pioupiou parsing failed:', error);
     
     return {
       success: false,
