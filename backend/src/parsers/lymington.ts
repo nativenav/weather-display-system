@@ -182,7 +182,7 @@ export function parseLymingtonData(data: any): ParseResult {
   try {
     // Initialize weather data
     const weatherData: WeatherData = {
-      temperature: 0.0,
+      temperature: null, // Lymington is wind-only, no temperature data
       humidity: 0.0,
       pressure: 0.0,
       windSpeed: 0.0,
