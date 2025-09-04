@@ -32,7 +32,7 @@ interface LymingtonEnhancedResponse {
     lastaverage: {
       wsa: number;  // Wind Speed Average (m/s)
       wsh: number;  // Wind Speed High/Max (m/s) - GUST DATA!
-      wsl: number;  // Wind Speed Low (m/s)
+      wsl: number;  // Wind Speed Low (m/s) 
       wda: number;  // Wind Direction Average (degrees)
       ts: string;   // Timestamp
       date: string;
@@ -205,15 +205,15 @@ export function parseLymingtonData(data: any): ParseResult {
       
       console.log('[DEBUG] Raw avgData:', JSON.stringify(avgData, null, 2));
       
-      // Extract wind data (WeatherFile actually returns in knots, despite documentation claiming m/s)
+      // Extract wind data (API returns in m/s as per documentation)
       if (typeof avgData.wsa === 'number' && avgData.wsa >= 0) {
-        weatherData.windSpeed = avgData.wsa * 0.514444; // Convert knots to m/s
-        console.log(`[DEBUG] Average wind speed: ${avgData.wsa} kt = ${weatherData.windSpeed.toFixed(2)} m/s`);
+        weatherData.windSpeed = avgData.wsa; // Already in m/s
+        console.log(`[DEBUG] Average wind speed: ${avgData.wsa} m/s`);
       }
       
       if (typeof avgData.wsh === 'number' && avgData.wsh >= 0) {
-        weatherData.windGust = avgData.wsh * 0.514444; // Convert knots to m/s
-        console.log(`[DEBUG] Gust speed: ${avgData.wsh} kt = ${weatherData.windGust.toFixed(2)} m/s`);
+        weatherData.windGust = avgData.wsh; // Already in m/s
+        console.log(`[DEBUG] Gust speed: ${avgData.wsh} m/s`);
       }
       
       if (typeof avgData.wda === 'number' && avgData.wda >= 0 && avgData.wda < 360) {
@@ -236,11 +236,11 @@ export function parseLymingtonData(data: any): ParseResult {
     else if (data && typeof data === 'object' && data.status === 'ok' && data.data && typeof data.data.wsc === 'number') {
       console.log('[DEBUG] Parsing current API response...');
       
-      // Extract current wind data (actually in knots, despite documentation claiming m/s)
+      // Extract current wind data (API returns in m/s as per documentation)
       if (typeof data.data.wsc === 'number' && data.data.wsc >= 0) {
-        weatherData.windSpeed = data.data.wsc * 0.514444; // Convert knots to m/s
-        weatherData.windGust = data.data.wsc * 0.514444; // Current reading, no separate gust
-        console.log(`[DEBUG] Current wind speed: ${data.data.wsc} kt = ${weatherData.windSpeed.toFixed(2)} m/s`);
+        weatherData.windSpeed = data.data.wsc; // Already in m/s
+        weatherData.windGust = data.data.wsc; // Current reading, no separate gust
+        console.log(`[DEBUG] Current wind speed: ${data.data.wsc} m/s`);
       }
       
       if (typeof data.data.wdc === 'number' && data.data.wdc >= 0 && data.data.wdc < 360) {
