@@ -406,9 +406,24 @@ function generateWeatherCard(result, windUnit) {
     const temp = data.data.temperature || {};
     const pressure = data.data.pressure || {};
     
-    // Convert wind speeds
-    const windSpeedAvg = wind.avg ? convertWindSpeed(wind.avg, 'ms', windUnit) : null;
-    const windSpeedGust = wind.gust ? convertWindSpeed(wind.gust, 'ms', windUnit) : null;
+    // Backend already sends wind speeds in regional units, detect the backend unit
+    let backendUnit = 'ms'; // default fallback
+    if (wind.unit) {
+        // Backend provides the unit it's sending
+        backendUnit = wind.unit === 'kt' ? 'kts' : (wind.unit === 'km/h' ? 'kph' : 'ms');
+    } else {
+        // Legacy fallback: determine from station type
+        const stationId = station.id;
+        if (['prarion', 'tetedebalme', 'planpraz'].includes(stationId)) {
+            backendUnit = 'kph'; // Chamonix stations send km/h
+        } else if (['brambles', 'seaview', 'lymington'].includes(stationId)) {
+            backendUnit = 'kts'; // Solent stations send knots
+        }
+    }
+    
+    // Convert from backend unit to user-selected display unit
+    const windSpeedAvg = wind.avg ? convertWindSpeed(wind.avg, backendUnit, windUnit) : null;
+    const windSpeedGust = wind.gust ? convertWindSpeed(wind.gust, backendUnit, windUnit) : null;
     const unitLabel = getWindUnitLabel(windUnit);
     
     return `
@@ -432,13 +447,13 @@ function generateWeatherCard(result, windUnit) {
                 <div class="data-item">
                     <div class="data-label">Direction</div>
                     <div class="data-value">
-                        ${wind.direction || '--'}
+                        ${wind.direction !== undefined && wind.direction !== null ? Math.round(wind.direction) + '°' : '--'}
                     </div>
                 </div>
                 <div class="data-item">
                     <div class="data-label">Temperature</div>
                     <div class="data-value">
-                        ${temp.air !== undefined ? temp.air.toFixed(1) : '--'}
+                        ${temp.air !== undefined && temp.air !== null && !isNaN(temp.air) && temp.air !== 0 ? temp.air.toFixed(1) : '--'}
                         <span class="data-unit">°C</span>
                     </div>
                 </div>
