@@ -362,7 +362,7 @@ async function handleStationsRequest(corsHeaders: Record<string, string>): Promi
       id: 'tetedebalme',
       name: 'Tête de Balme',
       location: 'Chamonix Valley, France (2,204m)',
-      description: 'Wind station, Windbird 1702, valley information',
+      description: 'Wind station, Pioupiou 1702, valley information',
       refreshInterval: 5, // minutes
       status: 'active'
     },
@@ -370,7 +370,7 @@ async function handleStationsRequest(corsHeaders: Record<string, string>): Promi
       id: 'planpraz',
       name: 'Planpraz',
       location: 'Chamonix Valley, France (1,958m)',
-      description: 'Wind station, Windbird 1724, paragliding takeoff',
+      description: 'Wind station, Pioupiou 1724, paragliding takeoff',
       refreshInterval: 5, // minutes
       status: 'active'
     }
@@ -786,13 +786,13 @@ async function collectStationData(stationId: string, env: Env): Promise<WeatherR
         console.error(`[ERROR] Failed to fetch Prarion data:`, error);
       }
     } else if (stationId === 'tetedebalme') {
-      // Direct Windbird 1702 API call
-      const WINDBIRD_URL = 'https://api.windbird.fr/api/v1/stations/1702/data';
+      // Direct Pioupiou 1702 API call (consolidated from Windbird)
+      const PIOUPIOU_URL = 'https://api.pioupiou.fr/v1/live/1702';
       try {
-        const response = await fetch(WINDBIRD_URL);
+        const response = await fetch(PIOUPIOU_URL);
         if (response.ok) {
           const data = await response.json();
-          const parseResult = parseWindbird1702(data);
+          const parseResult = parsePioupiou521(data); // Reuse existing Pioupiou parser
           if (parseResult.success && parseResult.data) {
             weatherData = parseResult.data;
           }
@@ -801,13 +801,13 @@ async function collectStationData(stationId: string, env: Env): Promise<WeatherR
         console.error(`[ERROR] Failed to fetch Tete de Balme data:`, error);
       }
     } else if (stationId === 'planpraz') {
-      // Direct Windbird 1724 API call
-      const WINDBIRD_URL = 'https://api.windbird.fr/api/v1/stations/1724/data';
+      // Direct Pioupiou 1724 API call (consolidated from Windbird)
+      const PIOUPIOU_URL = 'https://api.pioupiou.fr/v1/live/1724';
       try {
-        const response = await fetch(WINDBIRD_URL);
+        const response = await fetch(PIOUPIOU_URL);
         if (response.ok) {
           const data = await response.json();
-          const parseResult = parseWindbird1724(data);
+          const parseResult = parsePioupiou521(data); // Reuse existing Pioupiou parser
           if (parseResult.success && parseResult.data) {
             weatherData = parseResult.data;
           }

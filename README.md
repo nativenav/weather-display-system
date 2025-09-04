@@ -47,10 +47,11 @@ A complete weather data collection and display system with cloud backend, web ma
 | **Seaview** | Isle of Wight, UK | ✅ **LIVE** | Navis Live Data + Session | 21.4kt @ 197°, 17.7°C |
 | **Lymington** | Hampshire, UK | ✅ **LIVE** | WeatherFile.com V03 API | 26.2kt @ 209°, 31.0kt gust |
 | **Prarion (Les Houches)** | Chamonix, France (1,865m) | ✅ **LIVE** | Pioupiou 521 | Alpine wind data |
-| **Tête de Balme** | Chamonix, France (2,204m) | ✅ **LIVE** | Windbird 1702 | Alpine wind data |
-| **Planpraz** | Chamonix, France (1,958m) | ✅ **LIVE** | Windbird 1724 | Alpine wind data |
+| **Tête de Balme** | Chamonix, France (2,204m) | ✅ **LIVE** | Pioupiou 1702 | Alpine wind data |
+| **Planpraz** | Chamonix, France (1,958m) | ✅ **LIVE** | Pioupiou 1724 | Alpine wind data |
 
 ### Recent Updates (September 2025)
+- 🔧 **API Consolidation**: Fixed 503 errors for Chamonix stations by consolidating all three (Prarion, Tête de Balme, Planpraz) to use reliable Pioupiou API endpoints
 - 🔧 **Lymington**: Fixed WeatherFile.com API integration with V03 endpoints
 - 🔧 **Seaview**: Implemented proper Navis session management with hex parsing
 - ✅ **All Marine Stations**: Now providing real-time Solent sailing conditions
