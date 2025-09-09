@@ -2,6 +2,21 @@
 
 All notable changes to the Weather Display System will be documented in this file.
 
+## [2.1.1] - 2025-09-09
+
+### Fixed
+- **Forecast Data Coverage**: Updated Meteoblue API to request 2 days of data instead of 1
+- Ensures all forecast requests return complete 9-period coverage (27 hours) starting from nearest 3-hour interval
+- Resolved issue where forecast_days=1 provided insufficient data for full 9-period display
+- Proper handling of forecast periods that span across midnight into next day
+
+### Technical Details
+- Meteoblue API now requests `forecast_days: '2'` to guarantee at least 48 hours of data
+- Parser logic correctly finds nearest 3-hour interval before current time and returns next 9 periods
+- Cache keys updated to reflect 3-hourly intervals starting from current time
+- Backend API consistently returns 9 forecast periods for all regions
+- Frontend Forecasts tab displays complete 27-hour timeline as intended
+
 ## [Unreleased]
 
 ## [1.1.0] - 2025-09-03
