@@ -1,7 +1,7 @@
 /**
- * Weather Display Integrated v2.1.2 - XIAO ESP32C3 + 7.5" ePaper
+ * Weather Display Integrated v2.1.4 - XIAO ESP32C3 + 7.5" ePaper
  * 
- * Power-optimized three-column display with enhanced typography and minimal flashing
+ * Power-optimized three-column display with enhanced visual hierarchy and minimal flashing
  * Auto-registers with backend using MAC address as device ID
  * Compatible with Weather Display System Backend v2.0.0+
  * 
@@ -20,6 +20,16 @@
  * - Show connection status and errors
  * - MAC-based device identification
  * - Web-triggered device identification (flash display)
+ * 
+ * v2.1.4 Changes (Enhanced Visual Hierarchy):
+ * - Added horizontal lines under station names for better visual separation
+ * - Enhanced professional appearance with clear section divisions
+ * 
+ * v2.1.3 Changes (Refined Layout):
+ * - Fixed footer font size (reverted to bitmap for better fit)
+ * - Increased weather data line spacing by 50% (better readability)
+ * - Fixed null wind gust display ("--" instead of "N/A (inst.)")
+ * - Optimized overall layout balance
  * 
  * v2.1.2 Changes (Enhanced Typography):
  * - Upgraded to GFX Free Fonts for professional appearance
@@ -123,17 +133,17 @@ void setup() {
   
   // Force serial output even if DEBUG not working
   Serial.println("========================================");
-  Serial.println("  Weather Display Integrated v2.1.2");
+  Serial.println("  Weather Display Integrated v2.1.4");
   Serial.println("  XIAO ESP32C3 + 7.5\" ePaper");
-  Serial.println("  Enhanced Typography - Power Optimized");
+  Serial.println("  Enhanced Visual Hierarchy - Power Optimized");
   Serial.println("  Backend API v2.0.0+ Compatible");
   Serial.println("  DEBUG OUTPUT ENABLED");
   Serial.println("========================================");
   
   DEBUG_PRINTLN("========================================");
-  DEBUG_PRINTLN("  Weather Display Integrated v2.1.2");
+  DEBUG_PRINTLN("  Weather Display Integrated v2.1.4");
   DEBUG_PRINTLN("  XIAO ESP32C3 + 7.5\" ePaper");
-  DEBUG_PRINTLN("  Enhanced Typography - Power Optimized");
+  DEBUG_PRINTLN("  Enhanced Visual Hierarchy - Power Optimized");
   DEBUG_PRINTLN("  Backend API v2.0.0+ Compatible");
   DEBUG_PRINTLN("========================================");
   
@@ -159,7 +169,7 @@ void setup() {
   // Initialize ePaper display
   initializeDisplay();
   
-  // v2.1.2: Wake ePaper display in case we're coming from deep sleep
+  // v2.1.3: Wake ePaper display in case we're coming from deep sleep
   wakePowerSaveMode();
   
   // Initialize WiFi
@@ -181,7 +191,7 @@ void setup() {
 // ===============================================================================
 
 void enterPowerSaveMode() {
-  DEBUG_PRINTLN("=== v2.1.2 ENTERING POWER SAVE MODE ===");
+  DEBUG_PRINTLN("=== v2.1.3 ENTERING POWER SAVE MODE ===");
   
   // Calculate remaining sleep time until next update
   unsigned long currentTime = millis();
@@ -220,7 +230,7 @@ void enterPowerSaveMode() {
 }
 
 void wakePowerSaveMode() {
-  DEBUG_PRINTLN("=== v2.1.2 WAKING FROM POWER SAVE MODE ===");
+  DEBUG_PRINTLN("=== v2.1.3 WAKING FROM POWER SAVE MODE ===");
   
   // Wake up ePaper display
 #ifdef EPAPER_ENABLE
@@ -238,9 +248,9 @@ void wakePowerSaveMode() {
 void loop() {
   unsigned long currentTime = millis();
   
-  // v2.1.2 Power Optimization: Combined operations every 3 minutes
+  // v2.1.3 Power Optimization: Combined operations every 3 minutes
   if (wifiConnected && shouldUpdateWeather(currentTime)) {
-    DEBUG_PRINTLN("=== v2.1.2 COMBINED OPERATION CYCLE ===");
+    DEBUG_PRINTLN("=== v2.1.3 COMBINED OPERATION CYCLE ===");
     
     // Step 1: Monitor WiFi status
     monitorWiFiStatus();
@@ -279,7 +289,7 @@ void loop() {
     lastHeapCheck = currentTime;
   }
   
-  // v2.1.2 Power Optimization: Enter deep sleep if enabled
+  // v2.1.3 Power Optimization: Enter deep sleep if enabled
   if (DEEP_SLEEP_ENABLED && SLEEP_BETWEEN_UPDATES && !identifyRequested && 
       (currentTime - lastWeatherUpdate < (WEATHER_UPDATE_INTERVAL - 10000))) {
     enterPowerSaveMode();
@@ -308,7 +318,7 @@ void initializeDisplay() {
   epaper.setTextSize(1);
   epaper.drawString("MAC: " + deviceMAC, 10, 80);
   epaper.drawString("Device ID: " + deviceId, 10, 100);
-  epaper.drawString("Firmware: v2.1.2 (Enhanced Typography)", 10, 400);
+  epaper.drawString("Firmware: v2.1.4 (Enhanced Visual Hierarchy)", 10, 400);
   epaper.drawString("Backend: Weather Display System v2.0.0+", 10, 420);
   epaper.update();
   
@@ -322,12 +332,12 @@ void initializeDisplay() {
 
 void refreshDisplay() {
 #ifdef EPAPER_ENABLE
-  DEBUG_PRINTLN("Refreshing ePaper display with v2.1.2 enhanced typography...");
+  DEBUG_PRINTLN("Refreshing ePaper display with v2.1.4 enhanced visual hierarchy...");
   
-  // v2.1.2: Ensure display is awake before refresh
+  // v2.1.3: Ensure display is awake before refresh
   epaper.wake();
   
-  // v2.1.2: Use minimal anti-ghosting (just 1 quick flash)
+  // v2.1.3: Use minimal anti-ghosting (just 1 quick flash)
   performOptimizedAntiGhosting();
   
   // Clear and draw content
@@ -345,13 +355,13 @@ void refreshDisplay() {
   epaper.update();
   
   refreshCycle++;
-  DEBUG_PRINTF("v2.1.2 Enhanced typography refresh complete (cycle %d)\n", refreshCycle);
+  DEBUG_PRINTF("v2.1.3 Refined layout refresh complete (cycle %d)\n", refreshCycle);
 #endif
 }
 
 void performOptimizedAntiGhosting() {
 #ifdef EPAPER_ENABLE
-  DEBUG_PRINTLN("*** v2.1.2 MINIMAL ANTI-GHOSTING SEQUENCE ***");
+  DEBUG_PRINTLN("*** v2.1.3 MINIMAL ANTI-GHOSTING SEQUENCE ***");
   
   // v2.1.0: Minimal flash cycles - just 1 quick flash
   for (int flash = 0; flash < FLASH_CLEAR_CYCLES; flash++) {
@@ -387,33 +397,37 @@ void drawWeatherData() {
     int x = colStartX[i];
     int y = 15; // Start from top (v2.1.2 optimized)
     
-    // v2.1.2: Station name with FreeSansBold 18pt for prominence
+    // v2.1.4: Station name with FreeSansBold 18pt for prominence
     epaper.setFreeFont(&FreeSansBold18pt7b);
     epaper.drawString(stations[i].stationName, x, y);
-    y += 35; // Tighter spacing with better fonts
     
-    // v2.1.2: Data fields with FreeSans 12pt for readability
+    // v2.1.4: Add horizontal line under station name for visual separation
+    epaper.drawLine(x, y + 25, x + colWidth - 10, y + 25, TFT_BLACK);
+    
+    y += 40; // Space for line + margin
+    
+    // v2.1.4: Data fields with FreeSans 12pt for readability
     epaper.setFreeFont(&FreeSans12pt7b);
     
     // Wind direction (no decimals) with label
     epaper.drawString("WIND DIR: " + String(stations[i].windDirection) + " deg", x, y);
-    y += 28; // v2.1.2: Optimized spacing for better fonts
+    y += 42; // v2.1.3: Increased spacing by 50% (28 → 42px)
     
     // Wind speed with regional unit conversion for user-friendly display
     float displayWindSpeed = convertWindSpeed(stations[i].windSpeed, stations[i].displayUnit);
     epaper.drawString("WIND SPD: " + String(displayWindSpeed, 1) + " " + stations[i].displayUnit, x, y);
-    y += 28; // v2.1.2: Consistent spacing
+    y += 42; // v2.1.3: Increased spacing by 50%
     
-    // Wind gust with proper null handling for v2.0.0 backend
+    // Wind gust with proper null handling - simplified display
     String gustDisplay;
     if (isnan(stations[i].windGust)) {
-      gustDisplay = "WIND GUST: N/A (inst.)"; // Shorter text for space
+      gustDisplay = "WIND GUST: --"; // v2.1.3: Simplified null display
     } else {
       float displayWindGust = convertWindSpeed(stations[i].windGust, stations[i].displayUnit);
       gustDisplay = "WIND GUST: " + String(displayWindGust, 1) + " " + stations[i].displayUnit;
     }
     epaper.drawString(gustDisplay, x, y);
-    y += 28; // v2.1.2: Consistent spacing
+    y += 42; // v2.1.3: Increased spacing by 50%
     
     // Temperature with proper null handling for v2.0.0 backend
     String tempDisplay;
@@ -423,7 +437,7 @@ void drawWeatherData() {
       tempDisplay = "AIR TEMP: " + String(stations[i].temperature, 1) + " deg C";
     }
     epaper.drawString(tempDisplay, x, y);
-    y += 28; // v2.1.2: Final field spacing
+    y += 42; // v2.1.3: Final field spacing
     
     // v2.1.0: No individual update times - moved to footer
     
@@ -460,6 +474,8 @@ void drawErrorState() {
 
 void drawStatusFooter() {
 #ifdef EPAPER_ENABLE
+  // v2.1.3: Revert footer to bitmap font for better fit
+  epaper.setFreeFont(); // Reset to default bitmap font
   epaper.setTextSize(1);
   
   // v2.1.0: Last Updated time (applies to all 3 stations)
@@ -477,12 +493,12 @@ void drawStatusFooter() {
   // Device ID (first 6 characters)
   String shortId = "ID:" + deviceId.substring(0, 6);
   
-  // v2.1.2 Footer layout: Much closer to bottom edge
-  epaper.drawString(lastUpdated, 10, 460);  // v2.1.2: Much closer to bottom
+  // v2.1.4 Footer layout: Bitmap font for better fit
+  epaper.drawString(lastUpdated, 10, 460);  // v2.1.4: Bitmap font, bottom positioned
   epaper.drawString(wifiSignal, 150, 460);
   epaper.drawString(memoryStatus, 280, 460);
   epaper.drawString(shortId, 400, 460);
-  epaper.drawString("v2.1.2", 500, 460);
+  epaper.drawString("v2.1.4", 500, 460);
 #endif
 }
 

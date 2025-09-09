@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Bind event listeners
     bindEventListeners();
     
+    // Handle URL hash for tab navigation
+    handleInitialTab();
+    
     // Initial load
     checkBackendStatus();
     loadRegions();
@@ -44,6 +47,10 @@ function bindEventListeners() {
     // Weather data
     document.getElementById('refresh-data').addEventListener('click', loadWeatherData);
     document.getElementById('wind-unit-select').addEventListener('change', loadWeatherData);
+    
+    // Forecast data
+    document.getElementById('refresh-forecasts').addEventListener('click', loadForecastData);
+    document.getElementById('forecast-region-select').addEventListener('change', loadForecastData);
     
     // Device nickname editing - use event delegation
     document.addEventListener('blur', function(e) {
@@ -560,13 +567,42 @@ function switchTab(tabName) {
     document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
     document.getElementById(`${tabName}-tab`).classList.add('active');
     
+    // Update URL hash for deep linking
+    if (tabName !== 'overview') {
+        window.history.replaceState(null, null, `#${tabName}`);
+    } else {
+        window.history.replaceState(null, null, window.location.pathname);
+    }
+    
     // Load data for specific tabs when they become active
     if (tabName === 'stations' && stations.length === 0) {
         loadStations();
     } else if (tabName === 'devices') {
         loadDevices();
+    } else if (tabName === 'forecasts') {
+        loadForecastData();
     }
 }
+
+/**
+ * Handle initial tab from URL hash
+ */
+function handleInitialTab() {
+    const hash = window.location.hash.slice(1);
+    const validTabs = ['overview', 'forecasts', 'devices', 'stations', 'config'];
+    
+    if (hash && validTabs.includes(hash)) {
+        switchTab(hash);
+    } else {
+        // Default to overview tab
+        switchTab('overview');
+    }
+}
+
+// Handle browser back/forward buttons
+window.addEventListener('hashchange', function() {
+    handleInitialTab();
+});
 
 // ===============================================================================
 // DEVICE MANAGEMENT
@@ -868,3 +904,205 @@ setInterval(() => {
         loadDevices();
     }
 }, 60000); // Refresh every minute
+
+// ===============================================================================
+// WEATHER FORECAST FUNCTIONALITY
+// ===============================================================================
+
+/**
+ * Meteoblue Pictocode to Weather Icon Mapping
+ * Based on Meteoblue API pictocode documentation
+ */
+function getWeatherIcon(pictocode) {
+    const iconMap = {
+        // Clear sky conditions
+        1: '☀️',    // Clear sky
+        2: '🌤️',    // Fair / Partly sunny
+        3: '⛅',    // Partly cloudy
+        
+        // Cloudy conditions
+        4: '☁️',    // Overcast
+        5: '☁️',    // Cloudy
+        6: '☁️',    // Very cloudy
+        
+        // Fog conditions
+        7: '🌫️',    // Fog
+        8: '🌫️',    // Light fog
+        9: '🌫️',    // Dense fog
+        
+        // Light precipitation
+        10: '🌦️',   // Light rain
+        11: '🌦️',   // Light rain showers
+        12: '🌧️',   // Rain
+        13: '🌧️',   // Heavy rain
+        14: '🌧️',   // Rain showers
+        
+        // Snow conditions
+        15: '🌨️',   // Light snow
+        16: '❄️',    // Snow
+        17: '❄️',    // Heavy snow
+        18: '🌨️',   // Snow showers
+        19: '🌨️',   // Light snow showers
+        
+        // Mixed precipitation
+        20: '🌦️',   // Sleet
+        21: '🌦️',   // Light sleet
+        22: '☀️',    // Fair / Clear (alt)
+        23: '⛈️',    // Thunderstorm
+        24: '⛈️',    // Thunderstorm with rain
+        
+        // Additional conditions
+        25: '🌨️',   // Snow and rain
+        26: '🌩️',   // Thunderstorm with hail
+        27: '🌦️',   // Drizzle
+        28: '🌧️',   // Heavy drizzle
+        29: '🌬️',   // Windy
+        
+        // Night versions (if available)
+        30: '🌙',    // Clear night
+        31: '🌙',    // Fair night
+        32: '☁️',    // Cloudy night
+        33: '🌧️',   // Rainy night
+        34: '❄️',    // Snowy night
+        35: '⛈️'     // Stormy night
+    };
+    
+    return iconMap[pictocode] || '🌤️'; // Default to partly cloudy
+}
+
+/**
+ * Get weather condition description for pictocode
+ */
+function getWeatherDescription(pictocode) {
+    const descriptions = {
+        1: 'Clear sky', 2: 'Fair', 3: 'Partly cloudy', 4: 'Overcast', 5: 'Cloudy',
+        6: 'Very cloudy', 7: 'Fog', 8: 'Light fog', 9: 'Dense fog', 10: 'Light rain',
+        11: 'Light rain showers', 12: 'Rain', 13: 'Heavy rain', 14: 'Rain showers',
+        15: 'Light snow', 16: 'Snow', 17: 'Heavy snow', 18: 'Snow showers',
+        19: 'Light snow showers', 20: 'Sleet', 21: 'Light sleet', 22: 'Fair',
+        23: 'Thunderstorm', 24: 'Thunderstorm with rain', 25: 'Snow and rain',
+        26: 'Thunderstorm with hail', 27: 'Drizzle', 28: 'Heavy drizzle',
+        29: 'Windy', 30: 'Clear night', 31: 'Fair night', 32: 'Cloudy night',
+        33: 'Rainy night', 34: 'Snowy night', 35: 'Stormy night'
+    };
+    
+    return descriptions[pictocode] || 'Unknown';
+}
+
+/**
+ * Load forecast data for selected regions
+ */
+async function loadForecastData() {
+    const container = document.getElementById('forecast-data-container');
+    const timestamp = document.getElementById('forecast-last-refresh');
+    const regionSelect = document.getElementById('forecast-region-select');
+    const selectedRegion = regionSelect.value;
+    
+    container.innerHTML = '<div class="loading">Loading forecast data</div>';
+    
+    try {
+        let regionsToLoad = [];
+        
+        if (selectedRegion === 'both') {
+            regionsToLoad = ['chamonix', 'solent'];
+        } else {
+            regionsToLoad = [selectedRegion];
+        }
+        
+        const forecastPromises = regionsToLoad.map(async (regionId) => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/v1/forecast/region/${regionId}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const data = await response.json();
+                return { regionId, data, success: true };
+            } catch (error) {
+                return { regionId, error: error.message, success: false };
+            }
+        });
+        
+        const results = await Promise.all(forecastPromises);
+        displayForecastData(results);
+        
+        timestamp.textContent = `Last updated: ${new Date().toLocaleString()}`;
+        
+    } catch (error) {
+        console.error('Failed to load forecast data:', error);
+        container.innerHTML = `<div class="error">Failed to load forecast data: ${error.message}</div>`;
+    }
+}
+
+/**
+ * Display forecast data in cards
+ */
+function displayForecastData(results) {
+    const container = document.getElementById('forecast-data-container');
+    
+    if (!results || results.length === 0) {
+        container.innerHTML = '<div class="error">No forecast data available</div>';
+        return;
+    }
+    
+    let allHTML = '';
+    
+    results.forEach(result => {
+        if (result.success) {
+            allHTML += generateForecastCard(result.regionId, result.data);
+        } else {
+            allHTML += `
+                <div class="forecast-card error">
+                    <h3>${result.regionId.charAt(0).toUpperCase() + result.regionId.slice(1)} Region</h3>
+                    <div class="error">Failed to load forecast: ${result.error}</div>
+                </div>
+            `;
+        }
+    });
+    
+    container.innerHTML = allHTML;
+}
+
+/**
+ * Generate forecast card HTML for a region
+ */
+function generateForecastCard(regionId, forecastData) {
+    const regionInfo = {
+        chamonix: { name: 'Chamonix Valley', emoji: '🏔️', location: forecastData.location || 'Les Houches' },
+        solent: { name: 'Solent', emoji: '🌊', location: forecastData.location || 'Cowes' }
+    };
+    
+    const region = regionInfo[regionId] || { name: regionId, emoji: '📍', location: forecastData.location };
+    
+    // Generate hourly forecast items
+    const forecastHours = forecastData.forecast.slice(0, 10); // Ensure max 10 hours
+    const hourlyHTML = forecastHours.map(hour => {
+        const time = new Date(hour.timestamp);
+        const timeString = time.getHours().toString().padStart(2, '0') + ':00';
+        const icon = getWeatherIcon(hour.weatherCode);
+        const description = getWeatherDescription(hour.weatherCode);
+        
+        return `
+            <div class="forecast-hour">
+                <div class="forecast-time">${timeString}</div>
+                <div class="forecast-icon" title="${description}">${icon}</div>
+                <div class="forecast-temp">${Math.round(hour.temperature)}°</div>
+            </div>
+        `;
+    }).join('');
+    
+    const generatedTime = new Date(forecastData.generated);
+    
+    return `
+        <div class="forecast-card">
+            <div class="forecast-header">
+                <h3>${region.emoji} ${region.name}</h3>
+                <div class="forecast-location">${region.location}</div>
+                <div class="forecast-meta">
+                    Generated: ${generatedTime.toLocaleTimeString()}
+                </div>
+            </div>
+            <div class="forecast-timeline">
+                ${hourlyHTML}
+            </div>
+        </div>
+    `;
+}

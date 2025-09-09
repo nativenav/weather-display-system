@@ -19,7 +19,8 @@
         <main>
             <!-- Navigation Tabs -->
             <nav class="tabs-nav">
-                <button class="tab-button active" data-tab="overview">📊 Overview</button>
+                <button class="tab-button active" data-tab="overview">📊 Live</button>
+                <button class="tab-button" data-tab="forecasts">🌤️ Forecasts</button>
                 <button class="tab-button" data-tab="devices">📱 Devices</button>
                 <button class="tab-button" data-tab="stations">📍 Stations</button>
                 <button class="tab-button" data-tab="config">⚙️ Configuration</button>
@@ -46,6 +47,33 @@
                     </div>
                     <div id="weather-data-container">
                         <!-- Weather data will be loaded here -->
+                    </div>
+                </section>
+            </div>
+
+            <!-- Forecasts Tab -->
+            <div class="tab-content" id="forecasts-tab">
+                <section class="card">
+                    <h2>🌤️ Weather Forecasts</h2>
+                    <div class="forecast-controls">
+                        <div class="controls-left">
+                            <button id="refresh-forecasts" class="btn btn-secondary">🔄 Refresh Forecasts</button>
+                            <div class="region-selector">
+                                <label for="forecast-region-select">Region:</label>
+                                <select id="forecast-region-select">
+                                    <option value="both">Both Regions</option>
+                                    <option value="chamonix">Chamonix (Les Houches)</option>
+                                    <option value="solent">Solent (Cowes)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <span id="forecast-last-refresh" class="timestamp"></span>
+                    </div>
+                    <div class="forecast-description">
+                        <p>10-hour weather forecasts updated every hour. Sky conditions and temperature data provided by Meteoblue.</p>
+                    </div>
+                    <div id="forecast-data-container">
+                        <!-- Forecast data will be loaded here -->
                     </div>
                 </section>
             </div>
