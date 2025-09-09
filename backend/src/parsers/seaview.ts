@@ -54,11 +54,16 @@ function parseNavisHexData(hexData: string): { windSpeed: number; windDirection:
   const speed_raw = LSB >>> 16;           // bits 16-31 of LSB (unsigned right shift)
   const direction_raw = (LSB >>> 7) & 0x1FF; // bits 7-15 of LSB (9 bits)
   
+  console.log(`[DEBUG] Hex parsing: MSB=0x${MSB.toString(16)} (${MSB}), LSB=0x${LSB.toString(16)} (${LSB})`);
+  console.log(`[DEBUG] Extracted: temp_raw=${temp_raw}, speed_raw=${speed_raw}, direction_raw=${direction_raw}`);
+  
   // Apply conversions (from documentation)
   const speed_ms = speed_raw / 10.0;
   const windSpeedKnots = speed_ms * 1.94384449;  // Convert to knots
   const windDirection = direction_raw;
   const temperature = (temp_raw - 400) / 10.0;  // Temperature formula
+  
+  console.log(`[DEBUG] Final values: temp=${temperature}°C, wind=${windSpeedKnots.toFixed(1)} kts, dir=${windDirection}°`);
   
   return {
     windSpeed: windSpeedKnots,
@@ -139,7 +144,7 @@ function parseHistoricalData(histData: string): { avgWindSpeed: number; gustWind
 }
 
 /**
- * Establish session with Navis Live Data (as per documentation)
+ * Establish session with Navis Live Data with improved reliability
  */
 async function establishNavisSession(): Promise<string | null> {
   console.log('[INFO] Establishing Navis session...');
@@ -150,7 +155,9 @@ async function establishNavisSession(): Promise<string | null> {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-GB,en;q=0.9'
+        'Accept-Language': 'en-GB,en;q=0.9',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
       }
     });
     
@@ -191,17 +198,19 @@ async function fetchSeaviewHistoricalData(): Promise<FetchResult> {
     // Establish session
     const sessionId = await establishNavisSession();
     if (!sessionId) {
-      console.warn('[WARNING] Failed to establish session for historical data');
+      throw new Error('Failed to establish session - required for historical API access');
     }
+    
+    // Small delay to ensure session is properly established
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     // Prepare headers with session cookie
     const headers: Record<string, string> = {
-      ...SEAVIEW_HEADERS
+      ...SEAVIEW_HEADERS,
+      'Cookie': `PHPSESSID=${sessionId}`,
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache'
     };
-    
-    if (sessionId) {
-      headers['Cookie'] = `PHPSESSID=${sessionId}`;
-    }
     
     const historicalUrl = getSeaviewHistoricalUrl();
     console.log(`[DEBUG] Making historical API call to: ${historicalUrl}`);
@@ -264,19 +273,21 @@ async function fetchSeaviewLiveData(): Promise<FetchResult> {
     // First establish session (as per C++ documentation: session.get(sessionURL))
     const sessionId = await establishNavisSession();
     if (!sessionId) {
-      console.warn('[WARNING] Failed to establish session, trying without...');
+      throw new Error('Failed to establish session - required for API access');
     }
     
-    // Prepare headers with session cookie if available
+    // Small delay to ensure session is properly established
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Prepare headers with session cookie
     const headers: Record<string, string> = {
-      ...SEAVIEW_HEADERS
+      ...SEAVIEW_HEADERS,
+      'Cookie': `PHPSESSID=${sessionId}`,
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache'
     };
     
-    if (sessionId) {
-      headers['Cookie'] = `PHPSESSID=${sessionId}`;
-      console.log(`[DEBUG] Using session cookie: PHPSESSID=${sessionId}`);
-    }
-    
+    console.log(`[DEBUG] Using session cookie: PHPSESSID=${sessionId}`);
     console.log(`[DEBUG] Making live API call to: ${SEAVIEW_LIVE_URL}`);
     
     const response = await fetch(SEAVIEW_LIVE_URL, {
@@ -416,7 +427,10 @@ export function parseSeaviewData(rawData: string, dataType?: string): ParseResul
       
       const timestamp = parts[0];
       const status = parts[1];
-      const hexValue = parts[2]; // Third part is the hex data
+      let hexValue = parts[2]; // Third part is the hex data
+      
+      // Clean up hex data - remove URL encoding artifacts like %
+      hexValue = hexValue.replace(/%$/, '').trim();
       
       console.log(`[DEBUG] Timestamp: ${timestamp}, Status: ${status}, Hex: ${hexValue}`);
       
@@ -435,15 +449,26 @@ export function parseSeaviewData(rawData: string, dataType?: string): ParseResul
       weatherData.timestamp = new Date().toISOString();
       
       console.log(`[DEBUG] Live parsed: wind=${navisData.windSpeed.toFixed(1)} kts (${weatherData.windSpeed.toFixed(1)} m/s), dir=${navisData.windDirection}°, temp=${navisData.temperature.toFixed(1)}°C`);
+      console.log(`[DEBUG] Hex parsing details: hexValue='${hexValue}', length=${hexValue.length}`);
     }
     
     const parseTime = Date.now() - parseStart;
     weatherData.parseTime = parseTime;
+    
+    // Enhanced validation with specific UK coastal temperature limits for Seaview
+    const tempValid = weatherData.temperature !== null && 
+                     weatherData.temperature > -10 && 
+                     weatherData.temperature < 50; // UK coastal realistic range
+    
+    if (!tempValid && weatherData.temperature !== null) {
+      console.warn(`[WARN] Seaview temperature ${weatherData.temperature}°C outside realistic range (-10 to 50°C), marking invalid`);
+    }
+    
     weatherData.isValid = (
       weatherData.windSpeed >= 0 && 
       weatherData.windDirection >= 0 && 
       weatherData.windDirection < 360 &&
-      weatherData.temperature > -50 && weatherData.temperature < 60 // Reasonable temperature range
+      tempValid
     );
     
     // Add metadata about data source type
