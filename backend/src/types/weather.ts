@@ -84,9 +84,34 @@ export interface FetchResult {
   attempts: number;
 }
 
+// Forecast data types for Meteoblue integration
+export interface ForecastHour {
+  timestamp: string;      // ISO 8601 timestamp
+  temperature: number;    // Temperature in Celsius
+  weatherCode: number;    // Meteoblue weather code
+}
+
+export interface ForecastData {
+  regionId: string;
+  location: string;
+  hours: ForecastHour[];  // Up to 10 hours (current + next 9)
+  generated: string;      // ISO timestamp when forecast was generated
+  provider: 'meteoblue';
+}
+
+export interface ForecastResponse {
+  schema: "forecast-region.v1";
+  regionId: string;
+  location: string;
+  forecast: ForecastHour[];
+  generated: string;
+  ttl: number;
+}
+
 // Environment bindings for Cloudflare Workers
 export interface Env {
   WEATHER_CACHE: KVNamespace;
+  METEOBLUE_API_KEY?: string;  // Optional Meteoblue API key
   ENVIRONMENT: string;
 }
 

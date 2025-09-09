@@ -53,6 +53,12 @@ export interface RegionConfig {
   displayName: string;
   stations: string[];
   defaultStation: string;
+  forecast: {
+    latitude: number;
+    longitude: number;
+    altitude?: number;  // meters above sea level
+    location: string;   // human-readable forecast location
+  };
 }
 
 export interface IdentifyRequest {

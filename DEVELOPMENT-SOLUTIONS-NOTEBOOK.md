@@ -163,6 +163,51 @@ const WiFiNetwork WIFI_NETWORKS[] = {
 - **Identify function**: Flash display for physical device identification
 - **Heartbeat system**: Regular status updates to backend
 
+## 🆕 Weather Forecast Integration (September 2025)
+
+### **Meteoblue Forecast API Integration**
+Added 10-hour weather forecasts using Meteoblue Basic-1H package:
+
+- **Regions**: Les Houches (Chamonix) and Cowes (Solent)
+- **Data**: Hourly temperature and weather conditions for current + next 9 hours
+- **Update**: Every hour via cron job
+- **Caching**: 1-hour TTL in Cloudflare KV
+- **API**: Free Meteoblue Basic-1H package
+
+#### **New Endpoints**:
+```bash
+# Chamonix region forecast (Les Houches)
+GET /api/v1/forecast/region/chamonix
+
+# Solent region forecast (Cowes)
+GET /api/v1/forecast/region/solent
+```
+
+#### **Response Schema**: `forecast-region.v1`
+```json
+{
+  "regionId": "chamonix",
+  "location": "Les Houches",
+  "forecast": [{
+    "timestamp": "2025-09-09T16:00:00+02:00",
+    "temperature": 14.2,
+    "weatherCode": 3
+  }],
+  "ttl": 3600
+}
+```
+
+#### **Implementation Files**:
+- `src/fetchers/meteoblueForecast.ts` - API client with retry logic
+- `src/parsers/meteoblueForecast.ts` - Data parsing and validation
+- `src/config/regions.ts` - Extended with forecast coordinates
+- `src/types/weather.ts` - Forecast data types
+
+#### **Critical Setup Requirements**:
+1. **API Key**: Add via `wrangler secret put METEOBLUE_API_KEY`
+2. **Coordinates**: Les Houches (45.9237, 6.8694, 1000m) | Cowes (50.7606, -1.2974, 5m)
+3. **Cron Schedule**: Hourly collection at minute 0 (existing crons trigger this)
+
 ## 🎯 Future Development Notes
 
 ### **For AI Agents Working on This Project**:
@@ -172,6 +217,7 @@ const WiFiNetwork WIFI_NETWORKS[] = {
 4. **Respect the three-column layout** - firmware expects exactly 3 stations per region
 5. **Handle JSON nulls properly** - backend v2.0.0 uses proper null values
 6. **Test with open WiFi networks** like FoxGuest for development
+7. **Forecast Integration** 🆕: Use `/api/v1/forecast/region/{regionId}` for 10-hour forecasts
 
 ### **Code Patterns to Follow**:
 ```cpp

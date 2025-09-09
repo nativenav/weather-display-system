@@ -3,7 +3,8 @@ import { fetchSeaviewWeather, parseSeaviewData } from './parsers/seaview.js';
 import { fetchLymingtonWeather, parseLymingtonData } from './parsers/lymington.js';
 import { parsePioupiou521 } from './parsers/pioupiou.js';
 import { parseWindbird1702, parseWindbird1724 } from './parsers/windbird.js';
-import { WeatherResponse, RegionWeatherResponse, WeatherData, Env } from './types/weather.js';
+import { fetchAndParseMeteoblueForecast } from './parsers/meteoblueForecast.js';
+import { WeatherResponse, RegionWeatherResponse, WeatherData, ForecastResponse, ForecastData, Env } from './types/weather.js';
 import { formatDisplayLines, createCacheKey, generateContentHash, convertWindSpeedForRegion } from './utils/helpers.js';
 
 // Device management imports
@@ -47,7 +48,9 @@ export default {
     
     try {
       // Route API requests
-      if (path.startsWith('/api/v1/weather/region/')) {
+      if (path.startsWith('/api/v1/forecast/region/')) {
+        return await handleForecastRequest(request, env, ctx, corsHeaders);
+      } else if (path.startsWith('/api/v1/weather/region/')) {
         return await handleRegionWeatherRequest(request, env, ctx, corsHeaders);
       } else if (path.startsWith('/api/v1/weather/')) {
         return await handleWeatherRequest(request, env, ctx, corsHeaders);
@@ -97,13 +100,13 @@ export default {
   },
 
   /**
-   * Cron trigger handler for periodic weather data collection
+   * Cron trigger handler for periodic weather data collection and forecast updates
    */
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     console.log('[INFO] Cron trigger executed:', event.cron);
     
     // Collect weather data from all stations
-    const stations = ['brambles', 'seaview', 'lymington', 'prarion', 'tetedebalme', 'planpraz']; // All parsers ready
+    const stations = ['brambles', 'seaview', 'lymington', 'prarion', 'tetedebalme', 'planpraz'];
     
     for (const stationId of stations) {
       try {
@@ -112,6 +115,13 @@ export default {
       } catch (error) {
         console.error(`[ERROR] Failed to collect data for ${stationId}:`, error);
       }
+    }
+    
+    // Check if this is an hourly trigger (for forecast collection)
+    const currentMinute = new Date().getMinutes();
+    if (currentMinute === 0) {
+      console.log('[INFO] Hourly trigger detected, collecting forecast data');
+      await collectForecastData(env);
     }
     
     console.log('[INFO] Cron collection completed');
@@ -580,6 +590,133 @@ async function handleRegionWeatherRequest(
     return new Response(JSON.stringify({
       error: 'Service Unavailable',
       message: `Unable to fetch weather data for region ${regionId}`,
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }), {
+      status: 503,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  }
+}
+
+/**
+ * Handle forecast API requests: GET /api/v1/forecast/region/{region}
+ * Returns 10-hour forecast data (current + next 9 hours) for specified region
+ */
+async function handleForecastRequest(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  corsHeaders: Record<string, string>
+): Promise<Response> {
+  const url = new URL(request.url);
+  const pathParts = url.pathname.split('/');
+  const regionId = pathParts[5]; // /api/v1/forecast/region/{region}
+  
+  if (!regionId) {
+    return new Response(JSON.stringify({
+      error: 'Bad Request',
+      message: 'Region ID is required'
+    }), {
+      status: 400,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  }
+  
+  // Check if region is supported
+  const regionConfig = getRegion(regionId);
+  if (!regionConfig || !regionConfig.forecast) {
+    const availableRegions = getAllRegions().map(r => r.name);
+    return new Response(JSON.stringify({
+      error: 'Not Found',
+      message: `Region '${regionId}' not found or forecast not configured. Available: ${availableRegions.join(', ')}`
+    }), {
+      status: 404,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  }
+  
+  try {
+    const cacheKey = `forecast:${regionId}`;
+    
+    // Try to get cached forecast data
+    const cachedForecast = await env.WEATHER_CACHE.get(cacheKey, { type: 'json' });
+    
+    if (cachedForecast) {
+      console.log(`[INFO] Serving cached forecast for ${regionId}`);
+      const forecastData = cachedForecast as ForecastData;
+      
+      // Build response
+      const response: ForecastResponse = {
+        schema: "forecast-region.v1",
+        regionId: forecastData.regionId,
+        location: forecastData.location,
+        forecast: forecastData.hours,
+        generated: forecastData.generated,
+        ttl: 3600 // 1 hour cache
+      };
+      
+      return new Response(JSON.stringify(response, null, 2), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, max-age=3600', // 1 hour
+          ...corsHeaders
+        }
+      });
+    }
+    
+    // No cached data, fetch fresh forecast
+    console.log(`[INFO] Fetching fresh forecast for ${regionId}`);
+    
+    const forecastOptions = {
+      latitude: regionConfig.forecast.latitude,
+      longitude: regionConfig.forecast.longitude,
+      altitude: regionConfig.forecast.altitude
+    };
+    
+    const forecastData = await fetchAndParseMeteoblueForecast(
+      regionId,
+      regionConfig.forecast.location,
+      forecastOptions,
+      env
+    );
+    
+    // Cache the forecast data with 1 hour TTL
+    await env.WEATHER_CACHE.put(cacheKey, JSON.stringify(forecastData), {
+      expirationTtl: 3600 // 1 hour
+    });
+    
+    // Build response
+    const response: ForecastResponse = {
+      schema: "forecast-region.v1",
+      regionId: forecastData.regionId,
+      location: forecastData.location,
+      forecast: forecastData.hours,
+      generated: forecastData.generated,
+      ttl: 3600
+    };
+    
+    return new Response(JSON.stringify(response, null, 2), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=3600', // 1 hour
+        ...corsHeaders
+      }
+    });
+    
+  } catch (error) {
+    console.error(`[ERROR] Forecast request failed for ${regionId}:`, error);
+    return new Response(JSON.stringify({
+      error: 'Service Unavailable',
+      message: `Unable to fetch forecast data for region ${regionId}`,
       details: error instanceof Error ? error.message : 'Unknown error'
     }), {
       status: 503,
@@ -1298,4 +1435,61 @@ async function handleHeartbeatRequest(
       }
     });
   }
+}
+
+/**
+ * Collect forecast data for all regions with configured forecast locations
+ */
+async function collectForecastData(env: Env): Promise<void> {
+  console.log('[INFO] Starting forecast data collection');
+  const startTime = Date.now();
+  
+  const regions = getAllRegions();
+  const results: Record<string, { success: boolean; error?: string }> = {};
+  
+  for (const region of regions) {
+    if (!region.forecast) {
+      console.log(`[SKIP] No forecast configuration for region: ${region.name}`);
+      continue;
+    }
+    
+    try {
+      console.log(`[INFO] Collecting forecast for ${region.name} (${region.forecast.location})`);
+      
+      const forecastOptions = {
+        latitude: region.forecast.latitude,
+        longitude: region.forecast.longitude,
+        altitude: region.forecast.altitude
+      };
+      
+      const forecastData = await fetchAndParseMeteoblueForecast(
+        region.name,
+        region.forecast.location,
+        forecastOptions,
+        env
+      );
+      
+      // Cache the forecast data with 1 hour TTL
+      const cacheKey = `forecast:${region.name}`;
+      await env.WEATHER_CACHE.put(cacheKey, JSON.stringify(forecastData), {
+        expirationTtl: 3600 // 1 hour
+      });
+      
+      results[region.name] = { success: true };
+      console.log(`[SUCCESS] Forecast cached for ${region.name}: ${forecastData.hours.length} hours`);
+      
+    } catch (error) {
+      results[region.name] = {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+      console.error(`[ERROR] Failed to collect forecast for ${region.name}:`, error);
+    }
+  }
+  
+  const totalTime = Date.now() - startTime;
+  const successful = Object.values(results).filter(r => r.success).length;
+  const total = Object.keys(results).length;
+  
+  console.log(`[INFO] Forecast collection completed: ${successful}/${total} successful in ${totalTime}ms`);
 }

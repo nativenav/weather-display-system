@@ -22,7 +22,14 @@ Cloudflare Workers backend serving weather data from 6 active stations with KV c
 ### Weather Data
 - `GET /api/v1/weather/{station_id}` - JSON weather data
 - `GET /api/v1/weather/{station_id}?format=display` - ESP32C3 text format
+- `GET /api/v1/weather/region/{region_id}` - Regional weather data (3 stations)
 - `GET /api/v1/stations` - List all available stations
+
+### Forecast Data 🆕
+- `GET /api/v1/forecast/region/{region_id}` - 10-hour forecast (Meteoblue)
+  - **Les Houches** (Chamonix region): Alpine weather forecast
+  - **Cowes** (Solent region): Marine weather forecast
+  - Updated hourly with temperature and weather conditions
 
 ### System Management
 - `GET /health` - Health check and status
@@ -125,7 +132,9 @@ crons = ["*/5 * * * *"]  # Every 5 minutes
 
 [vars]
 ENVIRONMENT = "production"
-# Note: No API keys required - system uses public weather APIs
+
+# Secrets (add via: wrangler secret put METEOBLUE_API_KEY)
+# METEOBLUE_API_KEY = "your-meteoblue-api-key"  # For forecast data
 ```
 
 ## 📊 Monitoring
@@ -148,6 +157,15 @@ curl https://weather-backend.nativenav.workers.dev/api/v1/weather/prarion
 ```bash
 # Trigger collection from all stations
 curl -X POST https://weather-backend.nativenav.workers.dev/api/v1/collect
+```
+
+### Forecast Data 🆕
+```bash
+# Get 10-hour forecast for Chamonix region (Les Houches)
+curl https://weather-backend.nativenav.workers.dev/api/v1/forecast/region/chamonix
+
+# Get 10-hour forecast for Solent region (Cowes)
+curl https://weather-backend.nativenav.workers.dev/api/v1/forecast/region/solent
 ```
 
 ## 🔧 Development
@@ -181,6 +199,7 @@ npm run type-check
 
 ## 🎯 API Schema
 
+### Weather Data Schema
 Follows `weather.v1.json` schema:
 ```json
 {
@@ -200,6 +219,31 @@ Follows `weather.v1.json` schema:
     }
   },
   "ttl": 300
+}
+```
+
+### Forecast Data Schema 🆕
+Follows `forecast-region.v1` schema:
+```json
+{
+  "schema": "forecast-region.v1",
+  "regionId": "chamonix",
+  "location": "Les Houches",
+  "forecast": [
+    {
+      "timestamp": "2025-09-09T16:00:00+02:00",
+      "temperature": 14.2,
+      "weatherCode": 3
+    },
+    {
+      "timestamp": "2025-09-09T17:00:00+02:00", 
+      "temperature": 13.8,
+      "weatherCode": 1
+    }
+    // ... up to 10 hours total
+  ],
+  "generated": "2025-09-09T16:00:00Z",
+  "ttl": 3600
 }
 ```
 

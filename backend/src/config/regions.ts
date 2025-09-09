@@ -10,13 +10,25 @@ export const REGIONS: Record<string, RegionConfig> = {
     name: 'chamonix',
     displayName: 'Chamonix Valley, France',
     stations: ['prarion', 'planpraz', 'tetedebalme'], // Display order for firmware
-    defaultStation: 'prarion' // Primary station
+    defaultStation: 'prarion', // Primary station
+    forecast: {
+      latitude: 45.9237,
+      longitude: 6.8694,
+      altitude: 1000,  // Les Houches elevation
+      location: 'Les Houches'
+    }
   },
   solent: {
     name: 'solent', 
     displayName: 'Solent, UK',
     stations: ['lymington', 'brambles', 'seaview'], // Display order for firmware
-    defaultStation: 'lymington' // Primary station
+    defaultStation: 'lymington', // Primary station
+    forecast: {
+      latitude: 50.7606,
+      longitude: -1.2974,
+      altitude: 5,  // Cowes elevation
+      location: 'Cowes'
+    }
   }
 };
 
