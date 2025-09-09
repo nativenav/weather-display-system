@@ -784,7 +784,7 @@ async function handleGetConfigRequest(corsHeaders: Record<string, string>): Prom
       tetedebalme: { enabled: true },
       planpraz: { enabled: true }
     },
-    version: '0.1.0',
+    version: '2.1.0',
     lastUpdated: new Date().toISOString()
   };
   
@@ -863,7 +863,7 @@ async function handleHealthRequest(corsHeaders: Record<string, string>): Promise
   return new Response(JSON.stringify({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    version: '0.1.0'
+    version: '2.1.0'
   }), {
     headers: {
       'Content-Type': 'application/json',
