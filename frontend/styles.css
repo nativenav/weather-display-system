@@ -1242,3 +1242,15 @@ footer {
         grid-template-columns: repeat(4, 1fr);
     }
 }
+
+/* Forecast Version Footer */
+.forecast-version-footer {
+    text-align: center;
+    margin-top: 1rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    opacity: 0.6;
+    font-family: monospace;
+}

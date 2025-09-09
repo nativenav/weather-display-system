@@ -1072,19 +1072,22 @@ function generateForecastCard(regionId, forecastData) {
     
     const region = regionInfo[regionId] || { name: regionId, emoji: '📍', location: forecastData.location };
     
-    // Generate hourly forecast items
-    const forecastHours = forecastData.forecast.slice(0, 10); // Ensure max 10 hours
-    const hourlyHTML = forecastHours.map(hour => {
-        const time = new Date(hour.timestamp);
+    // Generate 3-hourly forecast items
+    const forecastPeriods = forecastData.forecast.slice(0, 9); // Up to 9 periods (27hrs, spilling into tomorrow)
+    const periodsHTML = forecastPeriods.map((period, index) => {
+        const time = new Date(period.timestamp);
+        const icon = getWeatherIcon(period.weatherCode);
+        const description = getWeatherDescription(period.weatherCode);
+        
+        // Format time for better 3-hourly display
         const timeString = time.getHours().toString().padStart(2, '0') + ':00';
-        const icon = getWeatherIcon(hour.weatherCode);
-        const description = getWeatherDescription(hour.weatherCode);
+        const dayLabel = index === 0 ? '' : (time.getDate() !== new Date().getDate() ? ' (+1d)' : '');
         
         return `
             <div class="forecast-hour">
-                <div class="forecast-time">${timeString}</div>
+                <div class="forecast-time">${timeString}${dayLabel}</div>
                 <div class="forecast-icon" title="${description}">${icon}</div>
-                <div class="forecast-temp">${Math.round(hour.temperature)}°</div>
+                <div class="forecast-temp">${Math.round(period.temperature)}°</div>
             </div>
         `;
     }).join('');
@@ -1101,7 +1104,10 @@ function generateForecastCard(regionId, forecastData) {
                 </div>
             </div>
             <div class="forecast-timeline">
-                ${hourlyHTML}
+                ${periodsHTML}
+            </div>
+            <div class="forecast-version-footer">
+                v2.1.1
             </div>
         </div>
     `;

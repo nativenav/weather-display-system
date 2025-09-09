@@ -28,7 +28,7 @@ export async function fetchMeteoblueForecast(
   const altitude = options.altitude || 0;
   
   // Build Meteoblue API URL
-  const baseUrl = 'https://my.meteoblue.com/packages/basic-1h';
+  const baseUrl = 'https://my.meteoblue.com/packages/basic-3h';
   const params = new URLSearchParams({
     apikey: apiKey,
     lat: options.latitude.toString(),
@@ -36,7 +36,7 @@ export async function fetchMeteoblueForecast(
     asl: altitude.toString(),
     format: 'json',
     windspeed: 'ms-1',      // Match existing system units
-    forecast_days: '1'       // 24-hour forecast (we'll take first 10 hours)
+    forecast_days: '1'       // 24-hour forecast in 3-hour intervals (8 periods)
   });
   
   const url = `${baseUrl}?${params.toString()}`;
@@ -123,11 +123,11 @@ export function validateMeteoblueResponse(data: any): boolean {
   }
   
   // Check for required data structure
-  if (!data.data_1h) {
+  if (!data.data_3h) {
     return false;
   }
   
-  const hourlyData = data.data_1h;
+  const hourlyData = data.data_3h;
   
   // Verify required arrays exist and have data
   if (!Array.isArray(hourlyData.time) || hourlyData.time.length === 0) {

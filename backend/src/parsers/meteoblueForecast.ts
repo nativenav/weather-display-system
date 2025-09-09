@@ -7,21 +7,21 @@ import { ForecastData, ForecastHour, ParseResult, Env } from '../types/weather.j
 import { fetchMeteoblueForecast, validateMeteoblueResponse, MeteoblueForecastOptions } from '../fetchers/meteoblueForecast.js';
 
 /**
- * Parse Meteoblue Basic-1H forecast data into standardized format
- * Extracts first 10 hours (current + next 9) for hourly forecast display
+ * Parse Meteoblue Basic-3H forecast data into standardized format
+ * Extracts 8 periods (24 hours in 3-hour intervals) starting from nearest time before current time
  */
 export function parseMeteoblueForecast(rawData: any): ForecastHour[] {
   const parseStart = Date.now();
   
   try {
-    console.log('[INFO] Parsing Meteoblue forecast data');
+    console.log('[INFO] Parsing Meteoblue 3-hourly forecast data');
     
     // Validate response structure
     if (!validateMeteoblueResponse(rawData)) {
       throw new Error('Invalid Meteoblue response structure');
     }
     
-    const hourlyData = rawData.data_1h;
+    const hourlyData = rawData.data_3h;
     
     // Extract arrays from Meteoblue response
     const times: string[] = hourlyData.time || [];
@@ -32,19 +32,21 @@ export function parseMeteoblueForecast(rawData: any): ForecastHour[] {
       throw new Error('No forecast data available in response');
     }
     
-    // Take first 10 hours maximum (current + next 9)
-    const maxHours = Math.min(10, times.length);
+    // Always return all available periods (up to 9) to show complete forecast coverage
+    // This gives a full view from start of forecast data through tomorrow
+    const periodsToTake = Math.min(9, times.length);
     const forecastHours: ForecastHour[] = [];
     
-    for (let i = 0; i < maxHours; i++) {
-      const timestamp = times[i];
-      const temperature = temperatures[i];
-      const weatherCode = weatherCodes[i];
+    for (let i = 0; i < periodsToTake; i++) {
+      const index = i; // Start from beginning of forecast data
+      const timestamp = times[index];
+      const temperature = temperatures[index];
+      const weatherCode = weatherCodes[index];
       
       // Skip invalid data points
       if (!timestamp || temperature === null || temperature === undefined || 
           weatherCode === null || weatherCode === undefined) {
-        console.warn(`[WARN] Skipping invalid forecast hour ${i}: temp=${temperature}, code=${weatherCode}`);
+        console.warn(`[WARN] Skipping invalid forecast period ${index}: temp=${temperature}, code=${weatherCode}`);
         continue;
       }
       
@@ -56,11 +58,11 @@ export function parseMeteoblueForecast(rawData: any): ForecastHour[] {
     }
     
     if (forecastHours.length === 0) {
-      throw new Error('No valid forecast hours found in data');
+      throw new Error('No valid forecast periods found in data');
     }
     
     const parseTime = Date.now() - parseStart;
-    console.log(`[SUCCESS] Parsed ${forecastHours.length} forecast hours in ${parseTime}ms`);
+    console.log(`[SUCCESS] Parsed ${forecastHours.length} forecast periods (3-hourly) covering ${forecastHours.length * 3} hours from start of forecast data in ${parseTime}ms`);
     
     return forecastHours;
     

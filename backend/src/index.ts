@@ -645,7 +645,7 @@ async function handleForecastRequest(
   }
   
   try {
-    const cacheKey = `forecast:${regionId}`;
+    const cacheKey = `forecast:${regionId}:3h:full`; // v2.1.1: 3-hourly data, full 9 periods
     
     // Try to get cached forecast data
     const cachedForecast = await env.WEATHER_CACHE.get(cacheKey, { type: 'json' });
@@ -784,7 +784,7 @@ async function handleGetConfigRequest(corsHeaders: Record<string, string>): Prom
       tetedebalme: { enabled: true },
       planpraz: { enabled: true }
     },
-    version: '2.1.0',
+    version: '2.1.1',
     lastUpdated: new Date().toISOString()
   };
   
@@ -863,7 +863,7 @@ async function handleHealthRequest(corsHeaders: Record<string, string>): Promise
   return new Response(JSON.stringify({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    version: '2.1.0'
+    version: '2.1.1'
   }), {
     headers: {
       'Content-Type': 'application/json',
@@ -1470,7 +1470,7 @@ async function collectForecastData(env: Env): Promise<void> {
       );
       
       // Cache the forecast data with 1 hour TTL
-      const cacheKey = `forecast:${region.name}`;
+      const cacheKey = `forecast:${region.name}:3h:full`; // v2.1.1: 3-hourly data, full 9 periods
       await env.WEATHER_CACHE.put(cacheKey, JSON.stringify(forecastData), {
         expirationTtl: 3600 // 1 hour
       });
