@@ -1,7 +1,7 @@
 # Weather Backend - Cloudflare Workers
 
 🚀 **Status**: **PRODUCTION DEPLOYED** at https://weather-backend.nativenav.workers.dev  
-**Version**: v2.0.0 🆕 **Standardized Parsers**
+**Version**: v2.1.0 🆕 **Weather Forecasts + Standardized Parsers**
 
 ## 🚨 v2.0.0 Breaking Changes
 
