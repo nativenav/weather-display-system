@@ -32,13 +32,26 @@ export function parseMeteoblueForecast(rawData: any): ForecastHour[] {
       throw new Error('No forecast data available in response');
     }
     
-    // Always return all available periods (up to 9) to show complete forecast coverage
-    // This gives a full view from start of forecast data through tomorrow
-    const periodsToTake = Math.min(9, times.length);
+    // Find the starting index - nearest 3-hour interval before or at current time
+    const currentTime = new Date();
+    let startIndex = 0;
+    
+    // Find the last forecast period that is <= current time
+    for (let i = 0; i < times.length; i++) {
+      const forecastTime = new Date(times[i]);
+      if (forecastTime <= currentTime) {
+        startIndex = i;
+      } else {
+        break;
+      }
+    }
+    
+    // Always return 9 periods starting from the found index
+    const periodsToTake = Math.min(9, times.length - startIndex);
     const forecastHours: ForecastHour[] = [];
     
     for (let i = 0; i < periodsToTake; i++) {
-      const index = i; // Start from beginning of forecast data
+      const index = startIndex + i;
       const timestamp = times[index];
       const temperature = temperatures[index];
       const weatherCode = weatherCodes[index];
@@ -62,7 +75,7 @@ export function parseMeteoblueForecast(rawData: any): ForecastHour[] {
     }
     
     const parseTime = Date.now() - parseStart;
-    console.log(`[SUCCESS] Parsed ${forecastHours.length} forecast periods (3-hourly) covering ${forecastHours.length * 3} hours from start of forecast data in ${parseTime}ms`);
+    console.log(`[SUCCESS] Parsed ${forecastHours.length} forecast periods (3-hourly) starting from index ${startIndex} (${times[startIndex] || 'unknown'}), covering ${forecastHours.length * 3} hours in ${parseTime}ms`);
     
     return forecastHours;
     

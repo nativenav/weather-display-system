@@ -645,7 +645,7 @@ async function handleForecastRequest(
   }
   
   try {
-    const cacheKey = `forecast:${regionId}:3h:full`; // v2.1.1: 3-hourly data, full 9 periods
+    const cacheKey = `forecast:${regionId}:3h:current`; // v2.1.1: 3-hourly from current interval
     
     // Try to get cached forecast data
     const cachedForecast = await env.WEATHER_CACHE.get(cacheKey, { type: 'json' });
@@ -1470,7 +1470,7 @@ async function collectForecastData(env: Env): Promise<void> {
       );
       
       // Cache the forecast data with 1 hour TTL
-      const cacheKey = `forecast:${region.name}:3h:full`; // v2.1.1: 3-hourly data, full 9 periods
+      const cacheKey = `forecast:${region.name}:3h:current`; // v2.1.1: 3-hourly from current interval
       await env.WEATHER_CACHE.put(cacheKey, JSON.stringify(forecastData), {
         expirationTtl: 3600 // 1 hour
       });

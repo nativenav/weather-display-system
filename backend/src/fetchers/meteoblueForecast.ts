@@ -36,7 +36,7 @@ export async function fetchMeteoblueForecast(
     asl: altitude.toString(),
     format: 'json',
     windspeed: 'ms-1',      // Match existing system units
-    forecast_days: '1'       // 24-hour forecast in 3-hour intervals (8 periods)
+    forecast_days: '2'       // 48-hour forecast to ensure 9 periods from any starting time
   });
   
   const url = `${baseUrl}?${params.toString()}`;
