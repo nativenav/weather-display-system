@@ -8,7 +8,7 @@ A complete weather data collection and display system with cloud backend, web ma
 
 ✅ **Backend v2.0.0**: Streamlined Cloudflare Worker with 6 active stations + device management  
 ✅ **Frontend v2.0.0**: Clean web interface with device management via wds.nativenav.com  
-✅ **Firmware v2.0.0**: ESP32C3 three-column ePaper display with backend v2.0.0 compatibility  
+✅ **Firmware v2.1.5**: ESP32C3 with battery optimizations & refined aesthetics - **NEW!**  
 ✅ **Data Sources**: UK marine (3) + French alpine (3) weather stations with standardized units  
 ✅ **API v2.0.0**: REST endpoints with proper null handling and m/s wind speed standards  
 ✅ **Streamlined**: Removed legacy code, test files, and unused deployments for efficiency
@@ -47,11 +47,13 @@ A complete weather data collection and display system with cloud backend, web ma
 | **Seaview** | Isle of Wight, UK | ✅ **LIVE** | Navis Live Data + Session | 21.4kt @ 197°, 17.7°C |
 | **Lymington** | Hampshire, UK | ✅ **LIVE** | WeatherFile.com V03 API | 26.2kt @ 209°, 31.0kt gust |
 | **Prarion (Les Houches)** | Chamonix, France (1,865m) | ✅ **LIVE** | Pioupiou 521 | Alpine wind data |
-| **Tête de Balme** | Chamonix, France (2,204m) | ✅ **LIVE** | Pioupiou 1702 | Alpine wind data |
+| **Tete de Balme** | Chamonix, France (2,204m) | ✅ **LIVE** | Pioupiou 1702 | Alpine wind data (v2.1.5: Fixed display) |
 | **Planpraz** | Chamonix, France (1,958m) | ✅ **LIVE** | Pioupiou 1724 | Alpine wind data |
 
-### Recent Updates (September 2025)
-- 🔧 **API Consolidation**: Fixed 503 errors for Chamonix stations by consolidating all three (Prarion, Tête de Balme, Planpraz) to use reliable Pioupiou API endpoints
+### Recent Updates (December 2025)
+- 🔋 **Firmware v2.1.5**: Major battery optimizations - removed startup screen, enhanced serial output
+- 🎨 **Aesthetic Improvements**: Capitalized field labels, degree symbols (°), fixed Tete de Balme display
+- 🔧 **API Consolidation**: Fixed 503 errors for Chamonix stations by consolidating all three (Prarion, Tete de Balme, Planpraz) to use reliable Pioupiou API endpoints
 - 🔧 **Lymington**: Fixed WeatherFile.com API integration with V03 endpoints
 - 🔧 **Seaview**: Implemented proper Navis session management with hex parsing
 - ✅ **All Marine Stations**: Now providing real-time Solent sailing conditions
@@ -75,10 +77,10 @@ weather-display-system/
     ├── script.js             # API integration
     └── package.json          # Deployment config
   
-  firmware/                   # ESP32C3 v2.0.0 firmware
+  firmware/                   # ESP32C3 v2.1.5 firmware (battery optimized)
     └── weather-display-integrated/
-        ├── weather-display-integrated-v2.0.0.ino  # Main firmware
-        ├── config.h          # Configuration
+        ├── weather-display-integrated.ino  # Main firmware v2.1.5
+        ├── config.h          # Configuration (updated v2.1.5)
         ├── driver.h          # ePaper display driver
         └── secrets.h.example # WiFi credentials template
   
@@ -140,16 +142,16 @@ deviceId.toLowerCase();
 String getWeatherData(String station) {
   HTTPClient http;
   String url = "https://weather-backend.nativenav.workers.dev/api/v1/weather/" + station + 
-               "?mac=" + deviceId + "&firmware=1.0.0";
+               "?mac=" + deviceId + "&firmware=2.1.5";
   
   http.begin(url);
-  http.addHeader("User-Agent", "ESP32C3-WeatherDisplay/1.0.0");
+  http.addHeader("User-Agent", "WeatherDisplay/2.1.5 ESP32C3-" + deviceId);
   
   int httpCode = http.GET();
   
   if (httpCode == 201) {
-    // New device auto-registered!
-    Serial.println("Device registered successfully!");
+    // New device auto-registered! (v2.1.5: Enhanced serial output)
+    Serial.println("Device registered successfully with backend!");
   }
   
   return (httpCode == 200 || httpCode == 201) ? http.getString() : "Error";
@@ -173,7 +175,7 @@ String getWeatherData(String station) {
 | Web Interface | ✅ **Production** | Full management UI deployed |
 | Data Parsers | ✅ **Complete** | UK marine + French alpine sources |
 | Documentation | ✅ **Complete** | Setup guides and API docs |
-| ESP32C3 Firmware | ✅ **Production** | Three-column display + aggressive anti-ghosting |
+| ESP32C3 Firmware | ✅ **Production** | v2.1.5 - Battery optimized + refined aesthetics |
 | Mobile App | 📋 **Future** | Planned for Phase 6 |
 
 ---

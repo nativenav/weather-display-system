@@ -1,7 +1,7 @@
 /**
- * Weather Display Integrated v2.1.4 - XIAO ESP32C3 + 7.5" ePaper
+ * Weather Display Integrated v2.1.6 - XIAO ESP32C3 + 7.5" ePaper
  * 
- * Power-optimized three-column display with enhanced visual hierarchy and minimal flashing
+ * Power-optimized three-column display with maximum battery life and refined aesthetics
  * Auto-registers with backend using MAC address as device ID
  * Compatible with Weather Display System Backend v2.0.0+
  * 
@@ -15,11 +15,24 @@
  * - Enhanced null data handling (proper "N/A" and "--" display)
  * - Regional unit conversion (m/s to km/h for alpine, knots for marine)
  * - Power-optimized: Combined operations every 3 minutes with sleep capability
- * - Optimized anti-ghosting: 2-flash cycle for faster updates
+ * - Optimized anti-ghosting: Single flash cycle for maximum battery life
  * - Enhanced layout: Last updated in footer, no redundant headers
  * - Show connection status and errors
  * - MAC-based device identification
  * - Web-triggered device identification (flash display)
+ * 
+ * v2.1.6 Changes (Enhanced Degree Symbols):
+ * - Made degree symbols bigger, bolder, and positioned lower for better visibility
+ * - Increased degree symbol radius from 2 to 3 pixels
+ * - Changed from outline to filled circles for boldness
+ * - Lowered vertical position by 4 pixels for optimal placement
+ * 
+ * v2.1.5 Changes (Battery & Aesthetic Optimizations):
+ * - Removed startup screen to save battery (single anti-ghosting cycle)
+ * - Enhanced serial output for better debugging without visual feedback
+ * - Fixed Tête de Balme accent character display (ê → e)
+ * - Converted field labels from UPPER CASE to Capitalized format
+ * - Added degrees symbol (°) for temperature and wind direction units
  * 
  * v2.1.4 Changes (Enhanced Visual Hierarchy):
  * - Added horizontal lines under station names for better visual separation
@@ -131,21 +144,23 @@ void setup() {
   Serial.begin(115200);
   delay(2000); // Allow serial monitor to connect
   
-  // Force serial output even if DEBUG not working
-  Serial.println("========================================");
-  Serial.println("  Weather Display Integrated v2.1.4");
-  Serial.println("  XIAO ESP32C3 + 7.5\" ePaper");
-  Serial.println("  Enhanced Visual Hierarchy - Power Optimized");
+  // v2.1.5: Enhanced serial output for debugging without visual startup screen
+  Serial.println("===========================================");
+  Serial.println("  Weather Display Integrated v2.1.6");
+  Serial.println("  XIAO ESP32C3 + 7.5\" ePaper Display");
+  Serial.println("  Battery & Aesthetic Optimizations");
   Serial.println("  Backend API v2.0.0+ Compatible");
+  Serial.println("  NO STARTUP SCREEN - Battery Optimized");
   Serial.println("  DEBUG OUTPUT ENABLED");
-  Serial.println("========================================");
+  Serial.println("===========================================");
   
-  DEBUG_PRINTLN("========================================");
-  DEBUG_PRINTLN("  Weather Display Integrated v2.1.4");
-  DEBUG_PRINTLN("  XIAO ESP32C3 + 7.5\" ePaper");
-  DEBUG_PRINTLN("  Enhanced Visual Hierarchy - Power Optimized");
+  DEBUG_PRINTLN("===========================================");
+  DEBUG_PRINTLN("  Weather Display Integrated v2.1.6");
+  DEBUG_PRINTLN("  XIAO ESP32C3 + 7.5\" ePaper Display");
+  DEBUG_PRINTLN("  Battery & Aesthetic Optimizations");
   DEBUG_PRINTLN("  Backend API v2.0.0+ Compatible");
-  DEBUG_PRINTLN("========================================");
+  DEBUG_PRINTLN("  NO STARTUP SCREEN - Battery Optimized");
+  DEBUG_PRINTLN("===========================================");
   
   // Initialize status LED
   pinMode(LED_BUILTIN, OUTPUT);
@@ -161,10 +176,20 @@ void setup() {
   deviceId.replace(":", "");
   deviceId.toLowerCase();
   
-  Serial.printf("Device MAC: %s\n", deviceMAC.c_str());
+  // v2.1.5: Enhanced device information for debugging without startup screen
+  Serial.printf("Device MAC Address: %s\n", deviceMAC.c_str());
   Serial.printf("Device ID: %s\n", deviceId.c_str());
-  DEBUG_PRINTF("Device MAC: %s\n", deviceMAC.c_str());
+  Serial.printf("ESP32 Chip Model: %s\n", ESP.getChipModel());
+  Serial.printf("ESP32 Chip Revision: %d\n", ESP.getChipRevision());
+  Serial.printf("Flash Size: %d MB\n", ESP.getFlashChipSize() / (1024 * 1024));
+  Serial.printf("Free Heap: %d bytes\n", ESP.getFreeHeap());
+  Serial.printf("CPU Frequency: %d MHz\n", ESP.getCpuFreqMHz());
+  
+  DEBUG_PRINTF("Device MAC Address: %s\n", deviceMAC.c_str());
   DEBUG_PRINTF("Device ID: %s\n", deviceId.c_str());
+  DEBUG_PRINTF("ESP32 Details: %s Rev%d, %dMHz, %dMB Flash\n", 
+               ESP.getChipModel(), ESP.getChipRevision(), 
+               ESP.getCpuFreqMHz(), ESP.getFlashChipSize() / (1024 * 1024));
   
   // Initialize ePaper display
   initializeDisplay();
@@ -303,41 +328,35 @@ void loop() {
 // ===============================================================================
 
 void initializeDisplay() {
-  DEBUG_PRINTLN("Initializing ePaper display...");
+  Serial.println("Initializing ePaper display hardware...");
+  DEBUG_PRINTLN("Initializing ePaper display hardware...");
   
 #ifdef EPAPER_ENABLE
   epaper.begin();
-  epaper.fillScreen(TFT_WHITE);
   
-  // Display startup message
-  epaper.setTextSize(2);
-  epaper.setTextColor(TFT_BLACK);
-  epaper.drawString("Weather Display", 10, 10);
-  epaper.drawString("Starting up...", 10, 40);
+  // v2.1.6: No startup screen - just initialize hardware silently
+  // Display will only update once when real weather data is available
+  // This saves one complete anti-ghosting cycle for better battery life
   
-  epaper.setTextSize(1);
-  epaper.drawString("MAC: " + deviceMAC, 10, 80);
-  epaper.drawString("Device ID: " + deviceId, 10, 100);
-  epaper.drawString("Firmware: v2.1.4 (Enhanced Visual Hierarchy)", 10, 400);
-  epaper.drawString("Backend: Weather Display System v2.0.0+", 10, 420);
-  epaper.update();
-  
-  DEBUG_PRINTLN("ePaper display initialized successfully");
+  Serial.println("ePaper hardware initialized (no startup screen for battery optimization)");
+  DEBUG_PRINTLN("ePaper hardware initialized - ready for first weather data display");
 #else
+  Serial.println("WARNING: ePaper not enabled! Check driver.h configuration");
   DEBUG_PRINTLN("ePaper not enabled! Check driver.h configuration");
 #endif
   
-  delay(2000); // Show startup message briefly
+  // v2.1.6: No delay - proceed immediately to minimize startup time
 }
 
 void refreshDisplay() {
 #ifdef EPAPER_ENABLE
-  DEBUG_PRINTLN("Refreshing ePaper display with v2.1.4 enhanced visual hierarchy...");
+  Serial.println("Refreshing ePaper display with v2.1.6 enhanced degree symbols...");
+  DEBUG_PRINTLN("Refreshing ePaper display with v2.1.6 enhanced degree symbols...");
   
-  // v2.1.3: Ensure display is awake before refresh
+  // v2.1.6: Ensure display is awake before refresh
   epaper.wake();
   
-  // v2.1.3: Use minimal anti-ghosting (just 1 quick flash)
+  // v2.1.6: Use single anti-ghosting flash for maximum battery life
   performOptimizedAntiGhosting();
   
   // Clear and draw content
@@ -355,17 +374,20 @@ void refreshDisplay() {
   epaper.update();
   
   refreshCycle++;
-  DEBUG_PRINTF("v2.1.3 Refined layout refresh complete (cycle %d)\n", refreshCycle);
+  Serial.printf("Display refresh complete (cycle %d) - Enhanced display\n", refreshCycle);
+  DEBUG_PRINTF("v2.1.6 Enhanced display refresh complete (cycle %d)\n", refreshCycle);
 #endif
 }
 
 void performOptimizedAntiGhosting() {
 #ifdef EPAPER_ENABLE
-  DEBUG_PRINTLN("*** v2.1.3 MINIMAL ANTI-GHOSTING SEQUENCE ***");
+  Serial.println("*** v2.1.6 BATTERY OPTIMIZED ANTI-GHOSTING ***");
+  DEBUG_PRINTLN("*** v2.1.6 BATTERY OPTIMIZED ANTI-GHOSTING SEQUENCE ***");
   
-  // v2.1.0: Minimal flash cycles - just 1 quick flash
+  // v2.1.6: Single flash cycle for maximum battery life (only when data updates)
   for (int flash = 0; flash < FLASH_CLEAR_CYCLES; flash++) {
-    DEBUG_PRINTF("Flash cycle %d/%d (minimal)\n", flash + 1, FLASH_CLEAR_CYCLES);
+    Serial.printf("Anti-ghosting flash %d/%d (battery optimized)\n", flash + 1, FLASH_CLEAR_CYCLES);
+    DEBUG_PRINTF("Flash cycle %d/%d (battery optimized)\n", flash + 1, FLASH_CLEAR_CYCLES);
     
     // Single BLACK flash
     epaper.fillScreen(TFT_BLACK);
@@ -378,7 +400,8 @@ void performOptimizedAntiGhosting() {
     delay(ANTI_GHOST_DELAY);
   }
   
-  DEBUG_PRINTLN("*** MINIMAL ANTI-GHOSTING COMPLETE ***");
+  Serial.println("*** BATTERY OPTIMIZED ANTI-GHOSTING COMPLETE ***");
+  DEBUG_PRINTLN("*** BATTERY OPTIMIZED ANTI-GHOSTING COMPLETE ***");
 #endif
 }
 
@@ -409,34 +432,45 @@ void drawWeatherData() {
     // v2.1.4: Data fields with FreeSans 12pt for readability
     epaper.setFreeFont(&FreeSans12pt7b);
     
-    // Wind direction (no decimals) with label
-    epaper.drawString("WIND DIR: " + String(stations[i].windDirection) + " deg", x, y);
+    // v2.1.6: Wind direction with enhanced degree symbol (bigger, bolder, lower)
+    String windDirText = "Wind Dir: " + String(stations[i].windDirection);
+    epaper.drawString(windDirText, x, y);
+    // Draw degree symbol as bigger, bolder filled circle after the number
+    int textWidth = epaper.textWidth(windDirText);
+    epaper.fillCircle(x + textWidth + 3, y - 4, 3, TFT_BLACK);
     y += 42; // v2.1.3: Increased spacing by 50% (28 → 42px)
     
-    // Wind speed with regional unit conversion for user-friendly display
+    // v2.1.5: Wind speed with capitalized label
     float displayWindSpeed = convertWindSpeed(stations[i].windSpeed, stations[i].displayUnit);
-    epaper.drawString("WIND SPD: " + String(displayWindSpeed, 1) + " " + stations[i].displayUnit, x, y);
+    epaper.drawString("Wind Speed: " + String(displayWindSpeed, 1) + " " + stations[i].displayUnit, x, y);
     y += 42; // v2.1.3: Increased spacing by 50%
     
-    // Wind gust with proper null handling - simplified display
+    // v2.1.5: Wind gust with capitalized label and proper null handling
     String gustDisplay;
     if (isnan(stations[i].windGust)) {
-      gustDisplay = "WIND GUST: --"; // v2.1.3: Simplified null display
+      gustDisplay = "Wind Gust: --"; // v2.1.5: Capitalized with simplified null display
     } else {
       float displayWindGust = convertWindSpeed(stations[i].windGust, stations[i].displayUnit);
-      gustDisplay = "WIND GUST: " + String(displayWindGust, 1) + " " + stations[i].displayUnit;
+      gustDisplay = "Wind Gust: " + String(displayWindGust, 1) + " " + stations[i].displayUnit;
     }
     epaper.drawString(gustDisplay, x, y);
     y += 42; // v2.1.3: Increased spacing by 50%
     
-    // Temperature with proper null handling for v2.0.0 backend
+    // v2.1.6: Temperature with enhanced degree symbol (bigger, bolder, lower)
     String tempDisplay;
+    String tempValue;
     if (isnan(stations[i].temperature)) {
-      tempDisplay = "AIR TEMP: -- deg C"; // Proper null display
+      tempValue = "--";
     } else {
-      tempDisplay = "AIR TEMP: " + String(stations[i].temperature, 1) + " deg C";
+      tempValue = String(stations[i].temperature, 1);
     }
+    tempDisplay = "Air Temp: " + tempValue;
     epaper.drawString(tempDisplay, x, y);
+    // Draw degree symbol as bigger, bolder filled circle after the temperature value
+    int tempTextWidth = epaper.textWidth(tempDisplay);
+    epaper.fillCircle(x + tempTextWidth + 3, y - 4, 3, TFT_BLACK);
+    // Draw 'C' after degree symbol
+    epaper.drawString("C", x + tempTextWidth + 8, y);
     y += 42; // v2.1.3: Final field spacing
     
     // v2.1.0: No individual update times - moved to footer
@@ -493,12 +527,12 @@ void drawStatusFooter() {
   // Device ID (first 6 characters)
   String shortId = "ID:" + deviceId.substring(0, 6);
   
-  // v2.1.4 Footer layout: Bitmap font for better fit
-  epaper.drawString(lastUpdated, 10, 460);  // v2.1.4: Bitmap font, bottom positioned
+  // v2.1.6 Footer layout: Bitmap font for better fit (battery & aesthetic optimizations)
+  epaper.drawString(lastUpdated, 10, 460);  // v2.1.6: Bitmap font, bottom positioned
   epaper.drawString(wifiSignal, 150, 460);
   epaper.drawString(memoryStatus, 280, 460);
   epaper.drawString(shortId, 400, 460);
-  epaper.drawString("v2.1.4", 500, 460);
+  epaper.drawString("v2.1.6", 500, 460);
 #endif
 }
 
@@ -630,7 +664,7 @@ void updateWeatherData() {
                "?mac=" + deviceId;
   
   http.begin(url);
-  http.addHeader("User-Agent", "WeatherDisplay/1.0 ESP32C3-" + deviceId);
+  http.addHeader("User-Agent", "WeatherDisplay/2.1.6 ESP32C3-" + deviceId); // v2.1.6: Updated version
   http.addHeader("X-Device-MAC", deviceMAC);
   
   int httpResponseCode = http.GET();
@@ -701,10 +735,10 @@ bool parseRegionWeatherResponse(const String& jsonString) {
     
     stations[i].stationName = station["stationId"].as<String>();
     
-    // Clean up station names for display
+    // Clean up station names for display (v2.1.6: Fixed accent character)
     if (stations[i].stationName == "prarion") stations[i].stationName = "Prarion";
     else if (stations[i].stationName == "planpraz") stations[i].stationName = "Planpraz";
-    else if (stations[i].stationName == "tetedebalme") stations[i].stationName = "Tête de Balme";
+    else if (stations[i].stationName == "tetedebalme") stations[i].stationName = "Tete de Balme"; // v2.1.6: Fixed ê → e
     else if (stations[i].stationName == "brambles") stations[i].stationName = "Brambles";
     else if (stations[i].stationName == "seaview") stations[i].stationName = "Seaview";
     else if (stations[i].stationName == "lymington") stations[i].stationName = "Lymington";
