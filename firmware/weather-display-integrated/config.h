@@ -38,17 +38,17 @@
 #define HTTP_RETRY_DELAY 1000             // 1 second between retries
 #define MAX_WIFI_RECONNECT_ATTEMPTS 5     // WiFi reconnection attempts
 
-// Device Settings v2.1.6 - Enhanced Degree Symbols
-#define DEVICE_FIRMWARE_VERSION "2.1.6"
-#define DEVICE_USER_AGENT "WeatherDisplay/2.1.6 ESP32C3"
+// Device Settings v2.1.7 - Corrected Degree Symbols
+#define DEVICE_FIRMWARE_VERSION "2.1.7"
+#define DEVICE_USER_AGENT "WeatherDisplay/2.1.7 ESP32C3"
 
 // Memory Management - Enhanced for 3-station parsing
 #define ENABLE_HEAP_MONITORING 1
 #define HEAP_CHECK_INTERVAL 30000         // 30 seconds
 #define JSON_BUFFER_SIZE 4096             // Larger buffer for 3 stations
 
-// v2.1.6 Backend Compatibility - Enhanced Degree Symbols
-#define API_VERSION "2.1.6"
+// v2.1.7 Backend Compatibility - Corrected Degree Symbols
+#define API_VERSION "2.1.7"
 #define WIND_UNIT_SOURCE "mps"            // Backend always returns m/s
 #define ENABLE_NULL_HANDLING 1            // Enhanced null data handling
 #define TEMPERATURE_RANGE_MIN -60.0       // Valid temperature range (Celsius)
