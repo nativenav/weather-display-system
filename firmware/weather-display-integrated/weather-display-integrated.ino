@@ -582,12 +582,13 @@ void drawStatusFooter() {
   // Device ID (first 6 characters)
   String shortId = "ID:" + deviceId.substring(0, 6);
   
-  // v2.1.8 Footer layout: WiFi signal bars instead of dBm text
+  // v2.1.8 Footer layout: WiFi label + signal bars for best clarity
   epaper.drawString(lastUpdated, 10, 460);  // v2.1.8: Bitmap font, bottom positioned
-  drawWiFiSignalBars(150, 468);            // v2.1.8: Visual WiFi signal bars
-  epaper.drawString(memoryStatus, 180, 460);
-  epaper.drawString(shortId, 300, 460);
-  epaper.drawString("v2.1.8", 400, 460);
+  epaper.drawString("WiFi:", 150, 460);     // v2.1.8: WiFi label
+  drawWiFiSignalBars(175, 468);             // v2.1.8: Visual WiFi signal bars
+  epaper.drawString(memoryStatus, 200, 460);
+  epaper.drawString(shortId, 320, 460);
+  epaper.drawString("v2.1.8", 420, 460);
 #endif
 }
 
