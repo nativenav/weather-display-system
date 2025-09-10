@@ -1,5 +1,5 @@
 /**
- * Weather Display Integrated v2.1.7 - XIAO ESP32C3 + 7.5" ePaper
+ * Weather Display Integrated v2.1.8 - XIAO ESP32C3 + 7.5" ePaper
  * 
  * Power-optimized three-column display with maximum battery life and refined aesthetics
  * Auto-registers with backend using MAC address as device ID
@@ -20,6 +20,13 @@
  * - Show connection status and errors
  * - MAC-based device identification
  * - Web-triggered device identification (flash display)
+ * 
+ * v2.1.8 Changes (WiFi Signal Bars):
+ * - Replaced WiFi dBm text with visual signal strength bars
+ * - Added 4-bar signal indicator (like cell phone signal bars)
+ * - Filled bars show signal strength, outline bars show maximum
+ * - Shows 'X' symbol when WiFi is disconnected
+ * - More intuitive and space-efficient footer display
  * 
  * v2.1.7 Changes (Corrected Degree Symbols):
  * - Fixed degree symbols to use thicker outline circles instead of filled circles
@@ -152,7 +159,7 @@ void setup() {
   
   // v2.1.5: Enhanced serial output for debugging without visual startup screen
   Serial.println("===========================================");
-  Serial.println("  Weather Display Integrated v2.1.7");
+  Serial.println("  Weather Display Integrated v2.1.8");
   Serial.println("  XIAO ESP32C3 + 7.5\" ePaper Display");
   Serial.println("  Battery & Aesthetic Optimizations");
   Serial.println("  Backend API v2.0.0+ Compatible");
@@ -161,7 +168,7 @@ void setup() {
   Serial.println("===========================================");
   
   DEBUG_PRINTLN("===========================================");
-  DEBUG_PRINTLN("  Weather Display Integrated v2.1.7");
+  DEBUG_PRINTLN("  Weather Display Integrated v2.1.8");
   DEBUG_PRINTLN("  XIAO ESP32C3 + 7.5\" ePaper Display");
   DEBUG_PRINTLN("  Battery & Aesthetic Optimizations");
   DEBUG_PRINTLN("  Backend API v2.0.0+ Compatible");
@@ -340,7 +347,7 @@ void initializeDisplay() {
 #ifdef EPAPER_ENABLE
   epaper.begin();
   
-  // v2.1.7: No startup screen - just initialize hardware silently
+  // v2.1.8: No startup screen - just initialize hardware silently
   // Display will only update once when real weather data is available
   // This saves one complete anti-ghosting cycle for better battery life
   
@@ -351,18 +358,18 @@ void initializeDisplay() {
   DEBUG_PRINTLN("ePaper not enabled! Check driver.h configuration");
 #endif
   
-  // v2.1.7: No delay - proceed immediately to minimize startup time
+  // v2.1.8: No delay - proceed immediately to minimize startup time
 }
 
 void refreshDisplay() {
 #ifdef EPAPER_ENABLE
-  Serial.println("Refreshing ePaper display with v2.1.7 corrected degree symbols...");
-  DEBUG_PRINTLN("Refreshing ePaper display with v2.1.7 corrected degree symbols...");
+  Serial.println("Refreshing ePaper display with v2.1.8 WiFi signal bars...");
+  DEBUG_PRINTLN("Refreshing ePaper display with v2.1.8 WiFi signal bars...");
   
-  // v2.1.7: Ensure display is awake before refresh
+  // v2.1.8: Ensure display is awake before refresh
   epaper.wake();
   
-  // v2.1.7: Use single anti-ghosting flash for maximum battery life
+  // v2.1.8: Use single anti-ghosting flash for maximum battery life
   performOptimizedAntiGhosting();
   
   // Clear and draw content
@@ -381,16 +388,16 @@ void refreshDisplay() {
   
   refreshCycle++;
   Serial.printf("Display refresh complete (cycle %d) - Enhanced display\n", refreshCycle);
-  DEBUG_PRINTF("v2.1.7 Enhanced display refresh complete (cycle %d)\n", refreshCycle);
+  DEBUG_PRINTF("v2.1.8 Enhanced display refresh complete (cycle %d)\n", refreshCycle);
 #endif
 }
 
 void performOptimizedAntiGhosting() {
 #ifdef EPAPER_ENABLE
-  Serial.println("*** v2.1.7 BATTERY OPTIMIZED ANTI-GHOSTING ***");
-  DEBUG_PRINTLN("*** v2.1.7 BATTERY OPTIMIZED ANTI-GHOSTING SEQUENCE ***");
+  Serial.println("*** v2.1.8 BATTERY OPTIMIZED ANTI-GHOSTING ***");
+  DEBUG_PRINTLN("*** v2.1.8 BATTERY OPTIMIZED ANTI-GHOSTING SEQUENCE ***");
   
-  // v2.1.7: Single flash cycle for maximum battery life (only when data updates)
+  // v2.1.8: Single flash cycle for maximum battery life (only when data updates)
   for (int flash = 0; flash < FLASH_CLEAR_CYCLES; flash++) {
     Serial.printf("Anti-ghosting flash %d/%d (battery optimized)\n", flash + 1, FLASH_CLEAR_CYCLES);
     DEBUG_PRINTF("Flash cycle %d/%d (battery optimized)\n", flash + 1, FLASH_CLEAR_CYCLES);
@@ -518,6 +525,45 @@ void drawErrorState() {
 #endif
 }
 
+// v2.1.8: WiFi signal strength indicator using vertical bars
+void drawWiFiSignalBars(int x, int y) {
+#ifdef EPAPER_ENABLE
+  if (!wifiConnected) {
+    // Draw "X" for disconnected WiFi
+    epaper.drawLine(x, y, x + 6, y - 6, TFT_BLACK);
+    epaper.drawLine(x + 6, y, x, y - 6, TFT_BLACK);
+    return;
+  }
+  
+  // Convert dBm to signal strength (0-4 bars)
+  int rssi = WiFi.RSSI();
+  int signalBars = 0;
+  if (rssi >= -50) signalBars = 4;      // Excellent
+  else if (rssi >= -60) signalBars = 3; // Good  
+  else if (rssi >= -70) signalBars = 2; // Fair
+  else if (rssi >= -80) signalBars = 1; // Weak
+  else signalBars = 0;                  // Very weak
+  
+  // Draw 4 vertical bars with increasing heights
+  int barWidth = 2;
+  int barSpacing = 1;
+  int maxHeight = 8;
+  
+  for (int i = 0; i < 4; i++) {
+    int barHeight = (i + 1) * (maxHeight / 4); // Heights: 2, 4, 6, 8
+    int barX = x + i * (barWidth + barSpacing);
+    
+    if (i < signalBars) {
+      // Draw filled bar for active signal
+      epaper.fillRect(barX, y - barHeight, barWidth, barHeight, TFT_BLACK);
+    } else {
+      // Draw outline bar for inactive signal
+      epaper.drawRect(barX, y - barHeight, barWidth, barHeight, TFT_BLACK);
+    }
+  }
+#endif
+}
+
 void drawStatusFooter() {
 #ifdef EPAPER_ENABLE
   // v2.1.3: Revert footer to bitmap font for better fit
@@ -526,9 +572,6 @@ void drawStatusFooter() {
   
   // v2.1.0: Last Updated time (applies to all 3 stations)
   String lastUpdated = "Updated: " + (stations[0].lastUpdateTime.isEmpty() ? "--:--" : stations[0].lastUpdateTime);
-  
-  // WiFi signal strength in dBm
-  String wifiSignal = wifiConnected ? ("WiFi:" + String(WiFi.RSSI()) + "dBm") : "WiFi:?";
   
   // Memory as percentage (total heap ~300KB for ESP32C3)
   int freeHeap = ESP.getFreeHeap();
@@ -539,12 +582,12 @@ void drawStatusFooter() {
   // Device ID (first 6 characters)
   String shortId = "ID:" + deviceId.substring(0, 6);
   
-  // v2.1.7 Footer layout: Bitmap font for better fit (battery & aesthetic optimizations)
-  epaper.drawString(lastUpdated, 10, 460);  // v2.1.7: Bitmap font, bottom positioned
-  epaper.drawString(wifiSignal, 150, 460);
-  epaper.drawString(memoryStatus, 280, 460);
-  epaper.drawString(shortId, 400, 460);
-  epaper.drawString("v2.1.7", 500, 460);
+  // v2.1.8 Footer layout: WiFi signal bars instead of dBm text
+  epaper.drawString(lastUpdated, 10, 460);  // v2.1.8: Bitmap font, bottom positioned
+  drawWiFiSignalBars(150, 468);            // v2.1.8: Visual WiFi signal bars
+  epaper.drawString(memoryStatus, 180, 460);
+  epaper.drawString(shortId, 300, 460);
+  epaper.drawString("v2.1.8", 400, 460);
 #endif
 }
 
@@ -676,7 +719,7 @@ void updateWeatherData() {
                "?mac=" + deviceId;
   
   http.begin(url);
-  http.addHeader("User-Agent", "WeatherDisplay/2.1.7 ESP32C3-" + deviceId); // v2.1.7: Updated version
+  http.addHeader("User-Agent", "WeatherDisplay/2.1.8 ESP32C3-" + deviceId); // v2.1.8: Updated version
   http.addHeader("X-Device-MAC", deviceMAC);
   
   int httpResponseCode = http.GET();
