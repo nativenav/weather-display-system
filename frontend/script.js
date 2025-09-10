@@ -1107,7 +1107,7 @@ function generateForecastCard(regionId, forecastData) {
                 ${periodsHTML}
             </div>
             <div class="forecast-version-footer">
-                v2.1.1
+                v2.1.3
             </div>
         </div>
     `;
