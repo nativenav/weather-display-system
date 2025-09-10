@@ -438,7 +438,7 @@ void drawWeatherData() {
     epaper.drawString(stations[i].stationName, x, y);
     
     // v2.1.4: Add horizontal line under station name for visual separation
-    epaper.drawLine(x, y + 25, x + colWidth - 10, y + 25, TFT_BLACK);
+    epaper.drawLine(x, y + 27, x + colWidth - 10, y + 27, TFT_BLACK);
     
     y += 40; // Space for line + margin
     
@@ -585,8 +585,8 @@ void drawStatusFooter() {
   // v2.1.8 Footer layout: WiFi label + signal bars for best clarity
   epaper.drawString(lastUpdated, 10, 460);  // v2.1.8: Bitmap font, bottom positioned
   epaper.drawString("WiFi:", 150, 460);     // v2.1.8: WiFi label
-  drawWiFiSignalBars(175, 468);             // v2.1.8: Visual WiFi signal bars
-  epaper.drawString(memoryStatus, 200, 460);
+  drawWiFiSignalBars(185, 468);             // v2.1.8: Visual WiFi signal bars (moved right for better spacing)
+  epaper.drawString(memoryStatus, 210, 460);
   epaper.drawString(shortId, 320, 460);
   epaper.drawString("v2.1.8", 420, 460);
 #endif
