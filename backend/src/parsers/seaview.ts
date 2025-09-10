@@ -97,36 +97,65 @@ function parseHistoricalData(histData: string): { avgWindSpeed: number; gustWind
   
   const windSpeeds: number[] = [];
   const windDirections: number[] = [];
-  const temperatures: number[] = [];
+  let temperatures: number[] = [];
   
   // Parse comma-separated readings: "timestamp1:hexdata1,timestamp2:hexdata2,..."
-  const readings = histData.split(',');
-  const maxSamples = 30; // Limit for efficiency
-  
-  for (let i = 0; i < Math.min(readings.length, maxSamples); i++) {
-    const reading = readings[i].trim();
+  const rawReadings = histData.split(',').map(r => r.trim()).filter(Boolean);
+
+  // Extract timestamp and hex, clean hex (remove trailing %), and sort by timestamp ascending
+  type Sample = { ts: number; hex: string };
+  const samples: Sample[] = [];
+  for (const reading of rawReadings) {
     const colonIndex = reading.indexOf(':');
-    
     if (colonIndex > 0 && colonIndex < reading.length - 1) {
-      const hexValue = reading.substring(colonIndex + 1);
-      
-      if (hexValue.length >= 8) {
-        try {
-          const navisData = parseNavisHexData(hexValue);
-          windSpeeds.push(navisData.windSpeed);
-          windDirections.push(navisData.windDirection);
-          temperatures.push(navisData.temperature);
-        } catch (error) {
-          console.warn(`[WARN] Failed to parse historical sample ${i}:`, error);
-        }
+      const tsStr = reading.substring(0, colonIndex);
+      let hexValue = reading.substring(colonIndex + 1).trim();
+      // Clean hex artifacts
+      hexValue = hexValue.replace(/%$/, '').trim();
+      const ts = parseInt(tsStr, 10);
+      if (!isNaN(ts) && hexValue.length >= 8) {
+        samples.push({ ts, hex: hexValue });
       }
+    }
+  }
+
+  if (samples.length === 0) {
+    throw new Error('No valid historical samples found');
+  }
+
+  // Sort by timestamp and take the most recent N samples
+  samples.sort((a, b) => a.ts - b.ts);
+  const maxSamples = 30; // Limit for efficiency
+  const recent = samples.slice(-maxSamples);
+
+  // Parse most recent samples
+  for (let i = 0; i < recent.length; i++) {
+    try {
+      const navisData = parseNavisHexData(recent[i].hex);
+      windSpeeds.push(navisData.windSpeed);
+      windDirections.push(navisData.windDirection);
+      temperatures.push(navisData.temperature);
+    } catch (error) {
+      console.warn(`[WARN] Failed to parse historical sample ${i}:`, error);
     }
   }
   
   if (windSpeeds.length === 0) {
-    throw new Error('No valid historical samples found');
+    throw new Error('No valid historical samples parsed');
   }
   
+  // Outlier rejection for temperatures using median (robust against spikes)
+  const sortedTemps = [...temperatures].sort((a, b) => a - b);
+  const median = sortedTemps.length % 2 === 1
+    ? sortedTemps[(sortedTemps.length - 1) / 2]
+    : (sortedTemps[sortedTemps.length / 2 - 1] + sortedTemps[sortedTemps.length / 2]) / 2;
+  // Filter out readings more than 8°C away from median (site shows ~15°C)
+  temperatures = temperatures.filter(t => Math.abs(t - median) <= 8);
+  if (temperatures.length === 0) {
+    // Fallback to sortedTemps if all filtered (avoid empty set)
+    temperatures = sortedTemps;
+  }
+
   // Calculate statistics
   const windStats = calculateWindStats(windSpeeds);
   
@@ -345,10 +374,30 @@ export async function fetchSeaviewWeather(): Promise<FetchResult> {
   const historicalResult = await fetchSeaviewHistoricalData();
   if (historicalResult.success) {
     console.log('[INFO] Successfully fetched Seaview historical data');
+
+    // ALSO fetch live in same flow to get temperature from live endpoint
+    let liveTempC: number | null = null;
+    try {
+      const live = await fetchSeaviewLiveData();
+      if (live.success && typeof live.data === 'string') {
+        // Extract hex and parse temp from live data
+        const parts = (live.data as string).trim().split(':');
+        if (parts.length >= 3) {
+          let hexValue = parts[2].replace(/%$/, '').trim();
+          const parsed = parseNavisHexData(hexValue);
+          liveTempC = parsed.temperature;
+          console.log(`[DEBUG] Live temperature override available: ${liveTempC}°C`);
+        }
+      }
+    } catch (e) {
+      console.warn('[WARN] Failed to fetch/parse live temperature for override:', e);
+    }
+
     return {
       ...historicalResult,
-      dataType: 'historical' // Add metadata
-    } as FetchResult & { dataType: string };
+      dataType: 'historical', // Add metadata
+      tempOverrideC: liveTempC
+    } as FetchResult & { dataType: string; tempOverrideC?: number | null };
   }
   
   // Fallback to live data
@@ -375,7 +424,7 @@ export async function fetchSeaviewWeather(): Promise<FetchResult> {
 /**
  * Parse Seaview Navis data with enhanced gust calculation
  */
-export function parseSeaviewData(rawData: string, dataType?: string): ParseResult {
+export function parseSeaviewData(rawData: string, dataType?: string, overrideTemperatureC?: number | null): ParseResult {
   const parseStart = Date.now();
   console.log(`[INFO] Parsing Seaview Navis ${dataType || 'unknown'} data...`);
   
@@ -452,6 +501,12 @@ export function parseSeaviewData(rawData: string, dataType?: string): ParseResul
       console.log(`[DEBUG] Hex parsing details: hexValue='${hexValue}', length=${hexValue.length}`);
     }
     
+    // If a live temperature override is available, apply it (always trust live for temperature)
+    if (typeof overrideTemperatureC === 'number' && !isNaN(overrideTemperatureC)) {
+      console.log(`[INFO] Applying live temperature override: ${overrideTemperatureC}°C`);
+      weatherData.temperature = Math.round(overrideTemperatureC * 10) / 10;
+    }
+
     const parseTime = Date.now() - parseStart;
     weatherData.parseTime = parseTime;
     

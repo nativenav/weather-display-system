@@ -784,7 +784,7 @@ async function handleGetConfigRequest(corsHeaders: Record<string, string>): Prom
       tetedebalme: { enabled: true },
       planpraz: { enabled: true }
     },
-    version: '2.1.2',
+    version: '2.1.3',
     lastUpdated: new Date().toISOString()
   };
   
@@ -863,7 +863,7 @@ async function handleHealthRequest(corsHeaders: Record<string, string>): Promise
   return new Response(JSON.stringify({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    version: '2.1.2'
+    version: '2.1.3'
   }), {
     headers: {
       'Content-Type': 'application/json',
@@ -894,7 +894,11 @@ async function collectStationData(stationId: string, env: Env): Promise<WeatherR
     } else if (stationId === 'seaview') {
       const fetchResult = await fetchSeaviewWeather();
       if (fetchResult.success && fetchResult.data) {
-        const parseResult = parseSeaviewData(fetchResult.data, (fetchResult as any).dataType);
+        const parseResult = parseSeaviewData(
+          fetchResult.data, 
+          (fetchResult as any).dataType,
+          (fetchResult as any).tempOverrideC
+        );
         if (parseResult.success && parseResult.data) {
           weatherData = parseResult.data;
         }
