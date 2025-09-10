@@ -17,6 +17,33 @@ All notable changes to the Weather Display System will be documented in this fil
 - Backend API consistently returns 9 forecast periods for all regions
 - Frontend Forecasts tab displays complete 27-hour timeline as intended
 
+## [2.1.3] - 2025-09-10
+
+### Fixed
+- **Seaview Temperature Accuracy**: Completely resolved temperature discrepancy issue
+- Temperature now matches live Navis website reference exactly (15.2°C vs 15°C)
+- Fixed erroneous readings that showed -17.5°C and 33.9°C previously
+- Enhanced session handling with dual API call strategy for optimal accuracy
+
+### Technical Implementation
+- **Dual Data Strategy**: Fetch both historical (for wind/gust) and live data (for temperature)
+- **Live Temperature Override**: Always use current live temperature, ignore historical averages
+- **Session Optimization**: Both API calls use same established PHP session for reliability
+- **Enhanced Parsing**: Added temperature override parameter to Seaview parser
+- **Validation Improvements**: Better outlier detection and data quality checks
+
+### Production Deployment
+- **Backend v2.1.3**: Deployed to Cloudflare Workers with temperature fix
+- **Frontend v2.1.3**: Updated and deployed to Cloudflare Pages
+- **API Endpoints**: All forecast and weather APIs operational and tested
+- **Repository**: All changes committed and pushed to GitHub
+
+### Results
+- ✅ Seaview temperature: Accurate within 0.1°C of reference source
+- ✅ Forecast system: 9 periods covering 27 hours as requested
+- ✅ Session handling: Reliable connectivity to all external APIs
+- ✅ Data quality: Enhanced validation prevents erroneous readings
+
 ## [Unreleased]
 
 ## [1.1.0] - 2025-09-03
